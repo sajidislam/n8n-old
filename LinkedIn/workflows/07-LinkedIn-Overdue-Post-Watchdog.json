@@ -1,0 +1,138 @@
+{
+  "name": "07-LinkedIn - Overdue Post Watchdog",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "2d778373-27b8-4c9d-a8a0-840b27aa1760",
+      "name": "Every 15 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "linkedin_posts",
+          "mode": "name"
+        },
+        "returnAll": true
+      },
+      "id": "15b13c17-1d97-480a-b16b-4570eb54e16a",
+      "name": "Get all posts",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        0
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = Date.now();\nconst rows = $input.all().map(i => i.json).filter(r => r && r.id != null);\nconst out = [];\nfor (const r of rows) {\n  const st = String(r.status || '').toLowerCase().trim();\n  const t = Date.parse(String(r.scheduled_at || ''));\n  let reason = null;\n  if (st === 'scheduled' && Number.isFinite(t) && t < now) reason = 'overdue scheduled';\n  else if (st === 'publishing') reason = 'stuck publishing';\n  else if (st === 'failed') reason = 'failed';\n  if (reason) out.push({id: r.id, status: r.status, scheduled_at: r.scheduled_at, published_at: r.published_at, reason});\n}\nif (!out.length) return [];\nconst lines = out.map(o => 'id=' + o.id + ' | status=' + o.status + ' | scheduled_at=' + o.scheduled_at + ' | published_at=' + (o.published_at || '-') + ' | reason: ' + o.reason);\nreturn [{json:{subject:'[n8n] LinkedIn posts need attention (' + out.length + ')', body: lines.join('\\n') + '\\n\\nCheck https://n8n.modhu.com'}}];"
+      },
+      "id": "1643ccc1-e6d0-4077-abdb-030ecba83567",
+      "name": "Find posts needing attention",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "sajidislam@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "1cc2f48c-3082-4b54-8346-8a001e122b35",
+      "name": "Send digest email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        768,
+        0
+      ],
+      "webhookId": "b92f8e75-aa97-4694-8c10-44fbd3d84dc3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mW8qzReZiuK9fngZ",
+          "name": "saceo-Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 15 minutes": {
+      "main": [
+        [
+          {
+            "node": "Get all posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get all posts": {
+      "main": [
+        [
+          {
+            "node": "Find posts needing attention",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find posts needing attention": {
+      "main": [
+        [
+          {
+            "node": "Send digest email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "34bde11a-ceb0-4c1e-b3e6-7a7413acefcb",
+  "meta": {
+    "instanceId": "b88a942fd5c17414ea1fc78ab4fc56e77e4feeccf3a7747c8f40c66bd81b20eb"
+  },
+  "nodeGroups": [],
+  "id": "lVDGrjGnB80WUjN3",
+  "tags": [
+    {
+      "updatedAt": "2026-11-05T18:24:10.242Z",
+      "createdAt": "2026-11-05T18:24:10.242Z",
+      "id": "0RGF3j4gWDPSxc9L",
+      "name": "LinkedIn-Rony"
+    }
+  ]
+}

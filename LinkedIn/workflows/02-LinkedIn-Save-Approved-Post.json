@@ -1,0 +1,427 @@
+{
+  "name": "02-LinkedIn - Save Approved Post (Tool)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "content"
+            },
+            {
+              "name": "scheduled_at"
+            },
+            {
+              "name": "approved",
+              "type": "boolean"
+            },
+            {
+              "name": "approval_message"
+            },
+            {
+              "name": "draft_id",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "21f0a011-b09f-4b18-a38c-fd406d0dd894",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $input.first().json;\nconst content = String(p.content || '').trim();\nconst timeText = String(p.scheduled_at || '').trim();\nconst message = String(p.approval_message || '').trim();\nconst draft_id = Number(p.draft_id);\nconst isTimeChange = /\\b(reschedule|change(?: the)? (?:publish(?:ing)?|schedule|scheduled|post(?:ing)?) time|update(?: the)? (?:publish(?:ing)?|schedule(?:d)?) time|move (?:it|the post)|publishing time)\\b/i.test(message);\nconst hasApprovalLanguage = /\\b(yes|approve|approved|schedule|go ahead|looks good|publish it|post it|confirm)\\b/i.test(message);\nif (!Number.isFinite(draft_id) || draft_id <= 0) throw new Error('A valid draft_id is required so the existing draft row can be updated. Nothing was inserted.');\nif (!/(Z|[+-]\\d{2}:\\d{2})$/.test(timeText)) throw new Error('scheduled_at must be ISO 8601 with timezone, e.g. 2026-11-07T23:00:00-05:00');\nconst t = Date.parse(timeText);\nif (!Number.isFinite(t) || t <= Date.now() + 15000) throw new Error('Publishing time must be in the future.');\nif (!isTimeChange) {\n  if (p.approved !== true) throw new Error('Cannot schedule: explicit approval is missing.');\n  if (!hasApprovalLanguage) throw new Error('Cannot schedule: the latest user message must explicitly approve or request scheduling of the finalized post.');\n  if (content.length < 5 || content.length > 2900) throw new Error('Post content missing or too long (limit 2900 characters in this template).');\n} else if (content.length > 2900) {\n  throw new Error('Post content is too long (limit 2900 characters in this template).');\n}\nreturn [{ json: { content, scheduled_at: new Date(t).toISOString(), status: 'scheduled', draft_id, approved_at: new Date().toISOString(), isTimeChange, approved: p.approved === true } }];"
+      },
+      "id": "c9589e22-6406-4d6c-9f4b-376563149ac5",
+      "name": "Validate approval, text and time",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "linkedin_posts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "content": "={{ $json.content }}",
+            "scheduled_at": "={{ $json.scheduled_at }}",
+            "status": "scheduled"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "scheduled_at",
+              "displayName": "scheduled_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "published_at",
+              "displayName": "published_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "24a16850-b082-430e-a18a-1e2765ce3c39",
+      "name": "Save approved post to Data Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a2c8ae73-f577-4eba-9aea-c752d1e93be0",
+              "name": "result",
+              "value": "scheduled",
+              "type": "string"
+            },
+            {
+              "id": "a8d8ad4d-57b3-4799-986c-c5d64eda467e",
+              "name": "post_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "93043100-06db-4cf7-85c4-263547115f54",
+              "name": "scheduled_at",
+              "value": "={{ $json.scheduled_at }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f9350e0e-12c4-4157-a3f6-4467b47ba219",
+      "name": "Return saved post confirmation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "linkedin_posts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.draft_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "d56252e6-9546-4958-b5b4-4ea591f1ebf2",
+      "name": "Get Existing Draft",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        960,
+        96
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Validate approval, text and time').first().json;\nconst rows = $input.all().filter(i => i.json && i.json.id !== undefined).map(i => i.json);\nif (rows.length !== 1) throw new Error('No unique draft found for ID ' + req.draft_id + '. Nothing was scheduled.');\nconst draft = rows[0];\nif (Number(draft.id) !== Number(req.draft_id)) throw new Error('Retrieved draft ID mismatch.');\nconst status = String(draft.status || '').trim().toLowerCase();\nif (status === 'published') throw new Error('This post has already been published, so its schedule cannot be changed.');\nif (status !== 'pending_approval' && status !== 'scheduled') throw new Error('Draft ID ' + req.draft_id + ' cannot be scheduled from status ' + status + '.');\n\nlet content;\nlet approved_at;\nif (status === 'scheduled' || req.isTimeChange) {\n  content = req.content && req.content.length >= 5 ? req.content : String(draft.content || '');\n  if (content.length < 5) throw new Error('Existing post content is missing; nothing was updated.');\n  approved_at = draft.approved_at || req.approved_at;\n} else {\n  if (req.approved !== true) throw new Error('Cannot schedule: explicit approval is missing.');\n  if (!req.content || req.content.length < 5) throw new Error('Post content missing or too long (limit 2900 characters in this template).');\n  if (draft.content !== req.content) throw new Error('Approved text does not exactly match saved draft. Nothing was scheduled.');\n  content = req.content;\n  approved_at = req.approved_at;\n}\nif (Date.parse(req.scheduled_at) <= Date.now() + 15000) throw new Error('Scheduled time is no longer in the future.');\nreturn [{ json: { draft_id: req.draft_id, scheduled_at: req.scheduled_at, approved_at, content, status: 'scheduled' } }];"
+      },
+      "id": "17400b90-5792-4ca5-a7c2-937398095618",
+      "name": "Verify Existing Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "linkedin_posts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.draft_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "scheduled",
+            "scheduled_at": "={{ $json.scheduled_at }}",
+            "content": "={{ $json.content }}",
+            "approved_at": "={{ $json.approved_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "scheduled_at",
+              "displayName": "scheduled_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "published_at",
+              "displayName": "published_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "dryRun": false
+        }
+      },
+      "id": "d509a251-efc9-4151-a90d-97993dcf92a2",
+      "name": "Update Existing Draft (NOT Insert)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        96
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().filter(i => i.json && i.json.id !== undefined);\nconst expected = $('Verify Existing Draft').first().json;\nif (items.length !== 1 || Number(items[0].json.id) !== Number(expected.draft_id) || items[0].json.status !== 'scheduled') {\n  throw new Error('No existing draft row was updated; scheduling is NOT confirmed.');\n}\nreturn [{json:{success:true, draft_id:Number(items[0].json.id), status:'scheduled', scheduled_at:items[0].json.scheduled_at, message:'Existing draft updated; no duplicate row created.'}}];"
+      },
+      "id": "421c6f42-9511-4965-81dd-566635f9c768",
+      "name": "Return Saved Post Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        96
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate approval, text and time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate approval, text and time": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save approved post to Data Table": {
+      "main": [
+        [
+          {
+            "node": "Return saved post confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Draft": {
+      "main": [
+        [
+          {
+            "node": "Verify Existing Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Existing Draft": {
+      "main": [
+        [
+          {
+            "node": "Update Existing Draft (NOT Insert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Existing Draft (NOT Insert)": {
+      "main": [
+        [
+          {
+            "node": "Return Saved Post Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "jl9nHJh3vrqdo429",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "5f2a74af-5173-4afc-80cc-be7feca7bfd2",
+  "meta": {
+    "instanceId": "b88a942fd5c17414ea1fc78ab4fc56e77e4feeccf3a7747c8f40c66bd81b20eb"
+  },
+  "nodeGroups": [],
+  "id": "2Iu9U6IT4LBvmw7Q",
+  "tags": [
+    {
+      "updatedAt": "2026-11-05T18:24:10.242Z",
+      "createdAt": "2026-11-05T18:24:10.242Z",
+      "id": "0RGF3j4gWDPSxc9L",
+      "name": "LinkedIn-Rony"
+    }
+  ]
+}

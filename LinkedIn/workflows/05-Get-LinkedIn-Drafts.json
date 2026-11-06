@@ -1,0 +1,125 @@
+{
+  "name": "05_Get_LinkedIn_Drafts",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "draft_id"
+            }
+          ]
+        }
+      },
+      "id": "869c0082-da28-4eae-94a6-54b2254be11f",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst session_id = typeof input.session_id === 'string' ? input.session_id.trim() : '';\nconst rawId = input.draft_id;\nconst draft_id = rawId === undefined || rawId === null || rawId === '' || rawId === 0 || rawId === '0' ? '' : String(rawId).trim();\nif (!session_id && !draft_id) throw new Error('Provide a session_id or draft_id');\nreturn [{ json: { session_id, draft_id } }];"
+      },
+      "id": "e5293855-c21e-4e46-a701-54ab85ff7a4f",
+      "name": "Validate Lookup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "linkedin_posts"
+        },
+        "returnAll": true
+      },
+      "id": "31ec3d61-ed96-450a-88a7-0bd7e706bdf6",
+      "name": "Read linkedin_posts",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const { session_id, draft_id } = $('Validate Lookup').first().json;\nconst rows = $input.all().map(item => item.json).filter(row => row && row.id != null);\nconst matches = rows.filter(row => {\n  if (draft_id) return String(row.id) === draft_id;\n  return String(row.session_id ?? '') === session_id;\n});\nmatches.sort((a, b) => Number(b.id) - Number(a.id));\nif (matches.length === 0) {\n  const message = draft_id ? `No post found with ID ${draft_id}` : 'No matching posts found for this session';\n  return [{ json: { found: false, drafts: [], message } }];\n}\nreturn [{\n  json: {\n    found: true,\n    drafts: matches.slice(0, 10).map(row => ({\n      draft_id: String(row.id),\n      content: row.content,\n      status: row.status,\n      session_id: row.session_id ?? null,\n      scheduled_at: row.scheduled_at ?? null,\n      published_at: row.published_at ?? null,\n      approved_at: row.approved_at ?? null\n    }))\n  }\n}];"
+      },
+      "id": "15b88e3b-b775-41c3-a5e3-1123dd22078e",
+      "name": "Find Draft and Return",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Lookup": {
+      "main": [
+        [
+          {
+            "node": "Read linkedin_posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read linkedin_posts": {
+      "main": [
+        [
+          {
+            "node": "Find Draft and Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "jl9nHJh3vrqdo429",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "21f0dde8-fed7-4d65-8d68-f0b353966f37",
+  "meta": {
+    "instanceId": "b88a942fd5c17414ea1fc78ab4fc56e77e4feeccf3a7747c8f40c66bd81b20eb"
+  },
+  "nodeGroups": [],
+  "id": "gCYO2TW5surSyWqf",
+  "tags": []
+}
