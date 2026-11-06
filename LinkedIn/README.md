@@ -94,7 +94,7 @@ Create the three credentials in [credentials.md](credentials.md), then open each
 
 1. **Google Gemini** (`googlePalmApi`), for example `Google Gemini account`. Attach it to the three Gemini chat models on 1.1 and to `Gemini 3.5 Flash Lite` on 08. The model on those nodes is `models/gemini-3.5-flash-lite`.
 2. **LinkedIn OAuth2** (`linkedInOAuth2Api`), for example `Rony Silvercod LinkedIn account`. Attach it to `Create LinkedIn post` on 03. Set **Person** to your own LinkedIn member. The export still has the source person id `DobJ-ysf80`.
-3. **Gmail OAuth2** (`gmailOAuth2`), for example `saceo-Gmail account`. Attach it to `Send error email` on 06 and `Send digest email` on 07. The source recipient is `sajidislam@gmail.com`. Change **Send To** on both nodes to your own email.
+3. **Gmail OAuth2** (`gmailOAuth2`), for example `saceo-Gmail account`. Attach it to `Send error email` on 06 and `Send digest email` on 07. Both nodes send to the placeholder `you@example.com`. Put your own alert email in **Send To** on both nodes before publishing 06 and 07.
 
 ### 4. Set the timezone to America/New_York
 
@@ -132,11 +132,15 @@ On the source instance, workflow settings for 1.1, 02, 03, 04, and 05 set `error
 
 Open **Settings** on 1.1, 02, 03, 04, 05, 07, and 08, and set **Error workflow** to the imported **06-LinkedIn - Error Alerts**. Leave 06 itself without an error workflow so a mail failure cannot loop.
 
-### 7. Point the web UI at this n8n host
+### 7. Put in your own n8n host
 
-Workflow 08's page HTML posts its forms to the source host `https://n8n.modhu.com/webhook/linkedin-posts` (five occurrences in the `Render Page` code node, including `const PAGE`). Replace that origin with your n8n base URL so every form POSTs to `https://<your-n8n-host>/webhook/linkedin-posts`.
+The exports use the placeholder host `https://n8n.example.com`. Replace it with your n8n base URL before you publish.
 
-The watchdog email body in 07 also links to `https://n8n.modhu.com`. Update that string if you want the digest to open your instance.
+- Workflow 08, `Render Page`: five form actions (including `const PAGE`) post to `https://n8n.example.com/webhook/linkedin-posts`. Change the host so every form POSTs to `https://<your-n8n-host>/webhook/linkedin-posts`.
+- Workflow 06 builds the execution link from `const base = 'https://n8n.example.com'`.
+- Workflow 07's digest ends with `Check https://n8n.example.com`.
+
+Leave the path as `/webhook/linkedin-posts`.
 
 ### 8. Publish in this order
 
@@ -165,11 +169,12 @@ https://<your-n8n-host>/webhook/linkedin-posts
 
 The page forms (`generate`, the editor's save/schedule, and delete) POST back to that same `/webhook/linkedin-posts` URL. `Route Action` switches on the posted `action`.
 
-While the workflow is open in the editor, n8n also exposes `/webhook-test/linkedin-posts`. The committed page targets the production path `/webhook/linkedin-posts`, which works after you publish.
+While the workflow is open in the editor, n8n also exposes `/webhook-test/linkedin-posts`. The committed page posts to the placeholder `https://n8n.example.com/webhook/linkedin-posts`. Put your own n8n host in those form actions. After you publish, open `https://<your-n8n-host>/webhook/linkedin-posts`.
 
 ## Safety
 
 - **03 is the publisher.** It runs on a timer and creates a real LinkedIn post for every due `scheduled` row. Import it and leave it unpublished until the LinkedIn credential, the person on `Create LinkedIn post`, and the data table are ready. Publishing it earlier can post whatever is already due in `linkedin_posts`.
 - **Secrets stay in n8n credentials.** These JSON files keep credential name and id stubs (`Google Gemini account`, `Rony Silvercod LinkedIn account`, `saceo-Gmail account`, and their ids) so import can re-link them. They do not contain API keys, OAuth tokens, or passwords. Keep it that way: do not commit credential exports, `.env` files, or tokens next to these workflows.
-- **Change the Gmail recipient** on 06 and 07 from `sajidislam@gmail.com` to your own address before those workflows are published.
+- **Put in your own alert email.** On 06 and 07, **Send To** is the placeholder `you@example.com`. Replace it with your address before those workflows are published.
+- **Put in your own n8n host.** Page forms, the error-email execution link, and the watchdog digest use `https://n8n.example.com`. Replace that host with your n8n base URL. The web UI path stays `/webhook/linkedin-posts`.
 - **Change the LinkedIn person** on 03 from the source id `DobJ-ysf80` to your own member.

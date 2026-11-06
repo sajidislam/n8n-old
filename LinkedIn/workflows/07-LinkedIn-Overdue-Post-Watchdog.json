@@ -43,7 +43,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const now = Date.now();\nconst rows = $input.all().map(i => i.json).filter(r => r && r.id != null);\nconst out = [];\nfor (const r of rows) {\n  const st = String(r.status || '').toLowerCase().trim();\n  const t = Date.parse(String(r.scheduled_at || ''));\n  let reason = null;\n  if (st === 'scheduled' && Number.isFinite(t) && t < now) reason = 'overdue scheduled';\n  else if (st === 'publishing') reason = 'stuck publishing';\n  else if (st === 'failed') reason = 'failed';\n  if (reason) out.push({id: r.id, status: r.status, scheduled_at: r.scheduled_at, published_at: r.published_at, reason});\n}\nif (!out.length) return [];\nconst lines = out.map(o => 'id=' + o.id + ' | status=' + o.status + ' | scheduled_at=' + o.scheduled_at + ' | published_at=' + (o.published_at || '-') + ' | reason: ' + o.reason);\nreturn [{json:{subject:'[n8n] LinkedIn posts need attention (' + out.length + ')', body: lines.join('\\n') + '\\n\\nCheck https://n8n.modhu.com'}}];"
+        "jsCode": "const now = Date.now();\nconst rows = $input.all().map(i => i.json).filter(r => r && r.id != null);\nconst out = [];\nfor (const r of rows) {\n  const st = String(r.status || '').toLowerCase().trim();\n  const t = Date.parse(String(r.scheduled_at || ''));\n  let reason = null;\n  if (st === 'scheduled' && Number.isFinite(t) && t < now) reason = 'overdue scheduled';\n  else if (st === 'publishing') reason = 'stuck publishing';\n  else if (st === 'failed') reason = 'failed';\n  if (reason) out.push({id: r.id, status: r.status, scheduled_at: r.scheduled_at, published_at: r.published_at, reason});\n}\nif (!out.length) return [];\nconst lines = out.map(o => 'id=' + o.id + ' | status=' + o.status + ' | scheduled_at=' + o.scheduled_at + ' | published_at=' + (o.published_at || '-') + ' | reason: ' + o.reason);\nreturn [{json:{subject:'[n8n] LinkedIn posts need attention (' + out.length + ')', body: lines.join('\\n') + '\\n\\nCheck https://n8n.example.com'}}];"
       },
       "id": "1643ccc1-e6d0-4077-abdb-030ecba83567",
       "name": "Find posts needing attention",
@@ -56,7 +56,7 @@
     },
     {
       "parameters": {
-        "sendTo": "sajidislam@gmail.com",
+        "sendTo": "you@example.com",
         "subject": "={{ $json.subject }}",
         "message": "={{ $json.body }}",
         "options": {

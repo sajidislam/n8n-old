@@ -49,7 +49,9 @@ Workflow 03 is the only workflow that creates LinkedIn posts. Leave it unpublish
 | [06-LinkedIn - Error Alerts](workflows/06-LinkedIn-Error-Alerts.json) | `Send error email` |
 | [07-LinkedIn - Overdue Post Watchdog](workflows/07-LinkedIn-Overdue-Post-Watchdog.json) | `Send digest email` |
 
-On the source instance both nodes send to `sajidislam@gmail.com`. Set **Send To** on both nodes to your own address before publishing 06 and 07.
+Both nodes send to the placeholder `you@example.com`. Put your own alert email in **Send To** on both nodes before publishing 06 and 07.
+
+Error and digest links inside 06 and 07 use the placeholder host `https://n8n.example.com`. Replace that host with your n8n base URL. The web UI in workflow 08 posts its forms to `https://n8n.example.com/webhook/linkedin-posts`; put your own host there too.
 
 ## What does not use a credential
 

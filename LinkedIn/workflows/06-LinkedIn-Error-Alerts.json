@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const e = $input.first().json;\nconst msg = String((e.execution && e.execution.error && e.execution.error.message) || '');\nconst expected = [/publishing time must be in the future/i,/already been published/i,/already published/i,/no post found/i,/cannot schedule from status/i,/post not found/i,/draft not found/i,/not found in (the )?(draft|queue)/i,/invalid status/i,/status must be/i,/cannot (publish|approve|edit) .*status/i];\nif (expected.some(r => r.test(msg))) { return []; }\nconst wfId = e.workflow && e.workflow.id;\nconst exId = e.execution && e.execution.id;\nconst base = 'https://n8n.modhu.com';\nconst link = exId ? (e.execution.url || (base + '/workflow/' + wfId + '/executions/' + exId)) : '(no execution id - manual/test run)';\nconst stack = String((e.execution && e.execution.error && e.execution.error.stack) || '').split('\\n').slice(0,8).join('\\n');\nconst body = ['Workflow: ' + (e.workflow && e.workflow.name),'Workflow ID: ' + wfId,'Execution ID: ' + exId,'Execution link: ' + link,'Mode: ' + (e.execution && e.execution.mode),'Last node: ' + (e.execution && e.execution.lastNodeExecuted),'','Error message: ' + msg,'','Stack (excerpt):',stack].join('\\n');\nreturn [{json:{subject:'[n8n] Error in ' + (e.workflow && e.workflow.name), body}}];"
+        "jsCode": "const e = $input.first().json;\nconst msg = String((e.execution && e.execution.error && e.execution.error.message) || '');\nconst expected = [/publishing time must be in the future/i,/already been published/i,/already published/i,/no post found/i,/cannot schedule from status/i,/post not found/i,/draft not found/i,/not found in (the )?(draft|queue)/i,/invalid status/i,/status must be/i,/cannot (publish|approve|edit) .*status/i];\nif (expected.some(r => r.test(msg))) { return []; }\nconst wfId = e.workflow && e.workflow.id;\nconst exId = e.execution && e.execution.id;\nconst base = 'https://n8n.example.com';\nconst link = exId ? (e.execution.url || (base + '/workflow/' + wfId + '/executions/' + exId)) : '(no execution id - manual/test run)';\nconst stack = String((e.execution && e.execution.error && e.execution.error.stack) || '').split('\\n').slice(0,8).join('\\n');\nconst body = ['Workflow: ' + (e.workflow && e.workflow.name),'Workflow ID: ' + wfId,'Execution ID: ' + exId,'Execution link: ' + link,'Mode: ' + (e.execution && e.execution.mode),'Last node: ' + (e.execution && e.execution.lastNodeExecuted),'','Error message: ' + msg,'','Stack (excerpt):',stack].join('\\n');\nreturn [{json:{subject:'[n8n] Error in ' + (e.workflow && e.workflow.name), body}}];"
       },
       "id": "559dc447-6829-47c9-9383-7255f212fce1",
       "name": "Skip expected validation errors",
@@ -27,7 +27,7 @@
     },
     {
       "parameters": {
-        "sendTo": "sajidislam@gmail.com",
+        "sendTo": "you@example.com",
         "subject": "={{ $json.subject }}",
         "message": "={{ $json.body }}",
         "options": {
