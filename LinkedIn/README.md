@@ -92,9 +92,9 @@ Data Table nodes already point at the table **by name**, so they resolve once th
 
 Create the three credentials in [credentials.md](credentials.md), then open each node and select the credential you created:
 
-1. **Google Gemini** (`googlePalmApi`), for example `Gemini account`. Attach it to the three Gemini chat models on 1.1 and to `Gemini 3.5 Flash Lite` on 08. The model on those nodes is `models/gemini-3.5-flash-lite`.
-2. **LinkedIn OAuth2** (`linkedInOAuth2Api`), for example `LinkedIn account`. Attach it to `Create LinkedIn post` on 03. Set **Person** to your own LinkedIn member. The export still has the source person id `YOUR_LINKEDIN_PERSON_ID`.
-3. **Gmail OAuth2** (`gmailOAuth2`), for example `Gmail account`. Attach it to `Send error email` on 06 and `Send digest email` on 07. Both nodes send to the placeholder `you@example.com`. Put your own alert email in **Send To** on both nodes before publishing 06 and 07.
+1. **Google Gemini** (`googlePalmApi`). Create your own credential and attach it to the three Gemini chat models on 1.1 and to `Gemini 3.5 Flash Lite` on 08. The model on those nodes is `models/gemini-3.5-flash-lite`. The export names the placeholder `Gemini account` (`YOUR_GEMINI_CREDENTIAL_ID`).
+2. **LinkedIn OAuth2** (`linkedInOAuth2Api`). Create your own credential and attach it to `Create LinkedIn post` on 03. Set **Person** to your own LinkedIn member. The export uses the placeholders `LinkedIn account` (`YOUR_LINKEDIN_CREDENTIAL_ID`) and person `YOUR_LINKEDIN_PERSON_ID`.
+3. **Gmail OAuth2** (`gmailOAuth2`). Create your own credential and attach it to `Send error email` on 06 and `Send digest email` on 07. The export names the placeholder `Gmail account` (`YOUR_GMAIL_CREDENTIAL_ID`). Both nodes send to the placeholder `you@example.com`. Put your own alert email in **Send To** on both nodes before publishing 06 and 07.
 
 ### 4. Set the timezone to America/New_York
 
@@ -174,7 +174,7 @@ While the workflow is open in the editor, n8n also exposes `/webhook-test/linked
 ## Safety
 
 - **03 is the publisher.** It runs on a timer and creates a real LinkedIn post for every due `scheduled` row. Import it and leave it unpublished until the LinkedIn credential, the person on `Create LinkedIn post`, and the data table are ready. Publishing it earlier can post whatever is already due in `linkedin_posts`.
-- **Secrets stay in n8n credentials.** These JSON files keep credential name and id stubs (`Gemini account`, `LinkedIn account`, `Gmail account`, and their ids) so import can re-link them. They do not contain API keys, OAuth tokens, or passwords. Keep it that way: do not commit credential exports, `.env` files, or tokens next to these workflows.
+- **Create your own credentials after import.** Exports should not include personal credential names or ids. These JSON files use generic placeholders only (`Gemini account`, `LinkedIn account`, `Gmail account`, and ids such as `YOUR_GEMINI_CREDENTIAL_ID`). They do not contain API keys, OAuth tokens, or passwords. Create Gemini, LinkedIn, and Gmail credentials in n8n and attach them on the nodes after import. Do not commit credential exports, `.env` files, or tokens next to these workflows.
 - **Put in your own alert email.** On 06 and 07, **Send To** is the placeholder `you@example.com`. Replace it with your address before those workflows are published.
 - **Put in your own n8n host.** Page forms, the error-email execution link, and the watchdog digest use `https://n8n.example.com`. Replace that host with your n8n base URL. The web UI path stays `/webhook/linkedin-posts`.
-- **Change the LinkedIn person** on 03 from the source id `YOUR_LINKEDIN_PERSON_ID` to your own member.
+- **Set the LinkedIn person** on 03. The export uses the placeholder `YOUR_LINKEDIN_PERSON_ID`. Replace it with your own member after you connect LinkedIn.
