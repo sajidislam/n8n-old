@@ -1,0 +1,496 @@
+{
+  "name": "04_Save_LinkedIn_Draft",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "content"
+            },
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "draft_id"
+            }
+          ]
+        }
+      },
+      "id": "68426c3a-0cb9-4277-a91c-e5e2936b7a1d",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst content = typeof input.content === 'string' ? input.content.trim() : '';\nconst session_id = typeof input.session_id === 'string' ? input.session_id.trim() : '';\nconst rawId = input.draft_id;\n// draft_id 0 is the required-tool sentinel for a brand-new draft.\nconst draft_id = rawId === undefined || rawId === null || rawId === '' || rawId === 0 || rawId === '0' ? null : Number(rawId);\nif (!content) throw new Error('Missing LinkedIn draft content');\nif (!session_id) throw new Error('Missing chat session_id');\nif (content.length > 3000) throw new Error('LinkedIn draft exceeds 3000 characters');\nif (draft_id !== null && (!Number.isFinite(draft_id) || draft_id <= 0)) throw new Error('draft_id must be a positive number when provided');\nreturn [{ json: { content, session_id, status: 'pending_approval', draft_id } }];"
+      },
+      "id": "c2099951-060e-4eba-ad75-dbf1cec6e651",
+      "name": "Validate Draft Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "linkedin_posts"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "content": "={{ $json.content }}",
+            "status": "pending_approval",
+            "session_id": "={{ $json.session_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "scheduled_at",
+              "displayName": "scheduled_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "published_at",
+              "displayName": "published_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "118fbcb6-3cf9-428d-ad1e-fc5ae0aecfe4",
+      "name": "Insert Draft into linkedin_posts",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1392,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first().json;\nconst id = row.id ?? row.post_id ?? null;\nif (id === null) throw new Error('Data Table write did not return a draft row ID');\nconst validated = $('Validate Draft Inputs').first().json;\nreturn [{ json: { success: true, draft_id: String(id), status: 'pending_approval', content: row.content ?? validated.content } }];"
+      },
+      "id": "e6f577d6-19f1-4e2b-bfa5-d63077fc0284",
+      "name": "Return Draft ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c0a1b2d3-e4f5-4678-9012-3456789abcde",
+              "leftValue": "={{ $json.draft_id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2f34df17-92e4-4aa2-8faa-f78cfb38bccf",
+      "name": "Has Existing Draft ID",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "linkedin_posts"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.draft_id }}"
+            },
+            {
+              "keyName": "status",
+              "keyValue": "pending_approval"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "content": "={{ $json.content }}",
+            "status": "pending_approval",
+            "session_id": "={{ $json.session_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "scheduled_at",
+              "displayName": "scheduled_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "published_at",
+              "displayName": "published_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "dryRun": false
+        }
+      },
+      "id": "a4c8fda0-44a7-40d4-a67a-9b9aa5afc55d",
+      "name": "Update Existing Draft",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1392,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "linkedin_posts"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $json.session_id }}"
+            },
+            {
+              "keyName": "status",
+              "keyValue": "pending_approval"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "3feeda51-370c-4470-a9b6-f48b4cb194e5",
+      "name": "Find Session Pending Draft",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        304
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const validated = $('Validate Draft Inputs').first().json;\nconst rows = $input.all().map(item => item.json).filter(row => row && row.id != null && String(row.status ?? '') === 'pending_approval' && String(row.session_id ?? '') === String(validated.session_id));\nrows.sort((a, b) => Number(b.id) - Number(a.id));\nif (rows.length === 0) {\n  return [{ json: { content: validated.content, session_id: validated.session_id, status: 'pending_approval', draft_id: null, reused_existing: false } }];\n}\nconst match = rows[0];\nreturn [{ json: { content: validated.content, session_id: validated.session_id, status: 'pending_approval', draft_id: Number(match.id), reused_existing: true } }];"
+      },
+      "id": "96cbdbc9-3063-4265-ba88-b6583e6c3326",
+      "name": "Resolve Session Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e1f2a3b4-c5d6-4789-0123-456789abcdef",
+              "leftValue": "={{ $json.draft_id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ad8b8c76-8c07-4197-a45e-d2f301e52bd3",
+      "name": "Session Has Pending Draft",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        304
+      ]
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "content": "SESSION LOOKUP TEST — revised in place. Please ignore.",
+          "session_id": "session-lookup-verify-20261106-a",
+          "draft_id": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate Draft Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Draft Inputs": {
+      "main": [
+        [
+          {
+            "node": "Has Existing Draft ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Existing Draft ID": {
+      "main": [
+        [
+          {
+            "node": "Update Existing Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find Session Pending Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Session Pending Draft": {
+      "main": [
+        [
+          {
+            "node": "Resolve Session Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Session Draft": {
+      "main": [
+        [
+          {
+            "node": "Session Has Pending Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Has Pending Draft": {
+      "main": [
+        [
+          {
+            "node": "Update Existing Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert Draft into linkedin_posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Existing Draft": {
+      "main": [
+        [
+          {
+            "node": "Return Draft ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Draft into linkedin_posts": {
+      "main": [
+        [
+          {
+            "node": "Return Draft ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "jl9nHJh3vrqdo429",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "40dcb374-f9ef-4b3c-a4e1-f6cad7a88146",
+  "meta": {
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "Ol3JmkV6ymQDonAo",
+  "tags": []
+}

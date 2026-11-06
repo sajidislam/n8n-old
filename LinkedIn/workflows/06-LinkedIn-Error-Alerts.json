@@ -1,0 +1,98 @@
+{
+  "name": "06-LinkedIn - Error Alerts",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "fe87899a-4ebe-4cb6-a18c-966a2db5891d",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $input.first().json;\nconst msg = String((e.execution && e.execution.error && e.execution.error.message) || '');\nconst expected = [/publishing time must be in the future/i,/already been published/i,/already published/i,/no post found/i,/cannot schedule from status/i,/post not found/i,/draft not found/i,/not found in (the )?(draft|queue)/i,/invalid status/i,/status must be/i,/cannot (publish|approve|edit) .*status/i];\nif (expected.some(r => r.test(msg))) { return []; }\nconst wfId = e.workflow && e.workflow.id;\nconst exId = e.execution && e.execution.id;\nconst base = 'https://n8n.example.com';\nconst link = exId ? (e.execution.url || (base + '/workflow/' + wfId + '/executions/' + exId)) : '(no execution id - manual/test run)';\nconst stack = String((e.execution && e.execution.error && e.execution.error.stack) || '').split('\\n').slice(0,8).join('\\n');\nconst body = ['Workflow: ' + (e.workflow && e.workflow.name),'Workflow ID: ' + wfId,'Execution ID: ' + exId,'Execution link: ' + link,'Mode: ' + (e.execution && e.execution.mode),'Last node: ' + (e.execution && e.execution.lastNodeExecuted),'','Error message: ' + msg,'','Stack (excerpt):',stack].join('\\n');\nreturn [{json:{subject:'[n8n] Error in ' + (e.workflow && e.workflow.name), body}}];"
+      },
+      "id": "559dc447-6829-47c9-9383-7255f212fce1",
+      "name": "Skip expected validation errors",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "9eaf3e30-3b60-4fb5-8651-04203cd6b27f",
+      "name": "Send error email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        512,
+        0
+      ],
+      "webhookId": "f49e3452-1da1-4af8-bb1f-965dd04e3f29",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Skip expected validation errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip expected validation errors": {
+      "main": [
+        [
+          {
+            "node": "Send error email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c2e91a4e-7ef2-47d4-865a-f9a771c72b51",
+  "meta": {
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "jl9nHJh3vrqdo429",
+  "tags": [
+    {
+      "updatedAt": "2026-11-05T18:24:10.242Z",
+      "createdAt": "2026-11-05T18:24:10.242Z",
+      "id": "0RGF3j4gWDPSxc9L",
+      "name": "LinkedIn"
+    }
+  ]
+}

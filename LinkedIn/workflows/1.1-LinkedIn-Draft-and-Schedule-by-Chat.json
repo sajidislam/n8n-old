@@ -1,0 +1,926 @@
+{
+  "name": "1.1-LinkedIn - Draft and Schedule by Chat",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "93a0250c-a896-42c7-bac5-f29050d2d72b",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        48,
+        480
+      ],
+      "webhookId": "8964c6e5-15ca-47cf-970d-8df04bb5f47e"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst raw = String(item.chatInput ?? item.message ?? '');\n// bare draft number -> schedule (takes priority over keyword routing)\nconst isBareNumber = /^\\s*\\d+\\s*$/.test(raw);\n\nconst stripped = raw\n  .replace(/change\\s+(the\\s+)?(publishing\\s+)?(date|time|schedule)/ig, ' ')\n  .replace(/publishing\\s+time/ig, ' ');\n\nconst isWrite = /(rewrite|rephrase|revise|\\bedit\\b|shorter|longer|hashtag|\\btone\\b|wording|\\bcontent\\b|make it|\\bwrite\\b|create (a )?post|new post|hook|typo|emoji|about )/i.test(stripped);\nconst isSchedule = /(reschedule|schedule|publishing time|publish\\b|\\bapprov|\\blooks good\\b|\\bgo ahead\\b|ship it|move (it )?to|postpone|delay|change\\s+(the\\s+)?(publishing\\s+)?(date|time|schedule)|\\b\\d{1,2}(:\\d{2})?\\s*(am|pm)\\b|tomorrow|tonight|next (monday|tuesday|wednesday|thursday|friday|saturday|sunday))/i.test(raw);\nconst isAdmin = /(show|list|get draft|get post|status|when is|what time|at what time|what('s| is)|find draft|lookup|retrieve|draft id|post id|\\bid\\s*\\d+|scheduled_at|supposed to|when .+ publish|publish(?:ed)? (?:at|on|time))/i.test(raw);\n\nlet route = 'write';\nif (isBareNumber) route = 'schedule';\nelse if (isWrite && isSchedule) route = 'write_and_schedule';\nelse if (isSchedule && !isWrite) route = 'schedule';\nelse if (isAdmin && !isWrite) route = 'admin';\n\nreturn [{\n  json: {\n    ...item,\n    route,\n    chatInput: item.chatInput ?? raw,\n    sessionId: item.sessionId,\n  },\n}];"
+      },
+      "id": "d93e0656-4601-4df9-a0d5-4877db1c52ce",
+      "name": "Classify intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "69fe1b2b-3b8a-4c9a-ab95-4c6cff55c2ba",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "write",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "write"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "83479504-c3f3-46f3-b281-9020aaad8a37",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "write_and_schedule",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "write_and_schedule"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "01b83abb-6b75-4a2d-9353-6981dbe74789",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "schedule",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "schedule"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ed6b923e-4d9f-450d-9e28-c68f028b1248",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "admin",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "admin"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "62983e37-eb43-4425-bddf-50f4b3a2bfee",
+      "name": "Route by user intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        560,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('When chat message received').first().json.chatInput }}",
+        "options": {
+          "systemMessage": "=# Current Date and Time\nCurrent date and time: {{ $now.setZone('America/New_York').toISO() }}\nCurrent date: {{ $now.setZone('America/New_York').toFormat('yyyy-MM-dd') }}\nCurrent time: {{ $now.setZone('America/New_York').toFormat('hh:mm a') }}\nTimezone: America/New_York\n\nUse this date and time to interpret requests involving today, tomorrow, and relative scheduling. Never ask the user for today's date when this information is available. Never schedule a post in the past.\n\n  When the user says \"today,\" use the current date provided in the system message. When the user says \"tomorrow,\" calculate the next calendar day in America/New_York. For a requested time, create an ISO 8601 timestamp with the correct offset. If the requested time has already passed, ask for a new future time. Do not ask the user to provide the current date or time.\n\n# Role\n\nYou are a LinkedIn content writer.\n\nYour responsibilities are to:\n1. Create engaging LinkedIn posts based on the user's topic.\n2. Allow the user to review and revise each post.\n3. Obtain explicit approval of the exact final post.\n4. Save every new or revised draft with save_linkedin_draft.\n5. Retrieve an existing draft with get_linkedin_drafts_for_edit when the user names a draft ID or you need the stored text.\n\nYou do not schedule posts. You do not have the schedule_approved_linkedin_post tool. Never claim that a post was scheduled or published.\n\n# Topic\n\nCreate a LinkedIn post about the topic or title provided by the user in their chat message.\n\nIf no topic is provided, ask the user what they want to write about.\n\n# Tone\n\nHuman, conversational, educational, inspiring, and thought-provoking.\n\nWrite naturally, as a knowledgeable person sharing useful experiences and insights.\n\n# Content Writing Instructions\n\n- Start with a strong, attention-grabbing hook.\n- Introduce a relatable frustration, challenge, or overlooked truth.\n- Use short, punchy sentences and one-liners.\n- Avoid jargon, generic motivational statements, and long paragraphs.\n- Make the content practical, useful, and thought-provoking.\n- Use emojis naturally, only where they enhance tone and emotion.\n- Do not overuse emojis.\n- End with a clear call-to-action or engaging question.\n- Include 3–5 relevant hashtags.\n- Keep the post ready for direct publication on LinkedIn.\n- Do not invent statistics, quotes, experiences, or factual claims.\n\n# Drafting and Approval\n\nAfter creating the post, display the complete proposed LinkedIn post.\n\nThen ask:\n\n\"Here is the LinkedIn post. Is it okay to publish?\"\n\nDo not publish or schedule anything until the user explicitly approves the exact final version.\n\nIf the user requests revisions:\n- Update the post according to their feedback.\n- Display the complete revised version.\n- Ask for approval again.\n\nApproval of an earlier version does not count as approval of a revised version.\n\nA clear \"Yes\", \"Approved\", or \"I approve this post\" may count as approval when it unambiguously refers to the latest displayed draft.\n\nIf the user requests scheduling before approving a new draft, retain the requested time and ask for approval.\nIf the user is only changing the publishing time of an existing saved post (they named a draft ID or referred to the current scheduled post) and did not ask to change the wording, do not ask for approval again and do not ask what content changes they want. Reschedule it immediately.\n\n# Persistent LinkedIn Draft Management\n\nYou have two tools:\n\n1. save_linkedin_draft\n2. get_linkedin_drafts_for_edit\n\nWhen you generate a new LinkedIn post:\n- Save the complete post using save_linkedin_draft with numeric draft_id 0; 0 means a brand-new post and routes to the insert path. For revisions, pass the existing positive draft_id to update that same row.\n- Preserve the exact content.\n- Record and return the draft ID.\n- Display the post and ask for user approval.\n- Do not schedule it yet.\n\nWhen the user asks to retrieve an earlier post so you can edit it:\n- Call get_linkedin_drafts_for_edit.\n- Search using the provided draft ID, or the current session when no draft ID is provided.\n- Return the exact stored content.\n- Do not invent missing drafts.\n\nWhen the user requests a revision:\n- Generate the revised version.\n- Update the existing draft in place by calling save_linkedin_draft with the same draft ID and the revised content. Do not create a new draft row.\n- Keep using that same draft ID.\n- Ask for approval of the updated version.\n\nIf the user also requested a publishing date or time in the same message, still save or update the draft, display the complete post, and mention the time they asked for. Do not say it has been scheduled. A separate scheduler handles publishing times after you finish.\n\nConversation memory is not a reliable source of permanent draft storage. Use get_linkedin_drafts_for_edit whenever earlier context is missing.\n\n# Important Rules\n\n- Never publish or schedule a post.\n- Never invent draft IDs, stored content, or publishing confirmations.\n- Be concise, friendly, and professional.\n\n\n# Mandatory Saved Draft Reply — Hard Rule\nNEVER reply with only the approval question. After save_linkedin_draft succeeds, your chat reply MUST include all of the following, in this order:\n1. The draft ID returned by save_linkedin_draft.\n2. The complete saved LinkedIn post text, verbatim: the exact same content that was saved, with no omissions, summaries, or paraphrasing. If the tool returns the saved content, display that exact text.\n3. Then ask exactly: \"Here is the LinkedIn post. Is it okay to publish?\"\nDo not omit the post body even if you just saved it via a tool. A reply that is only the approval question is incorrect. This rule applies to every new or revised saved draft.\n"
+        }
+      },
+      "id": "68331784-5834-479f-9357-c961b24a9879",
+      "name": "AI Agent - Writer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When chat message received').first().json.sessionId }}",
+        "contextWindowLength": 20
+      },
+      "id": "f1c8affc-7f16-4017-89ab-0e7137611f25",
+      "name": "Simple Memory - Writer",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1072,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Save a LinkedIn post draft. Always provide a numeric draft_id: use 0 for a brand-new post (the 04 workflow treats 0 as no existing ID and inserts), or the existing positive draft_id for a revision so that row is updated in place. Return the saved draft ID. Never mark the draft as approved or scheduled.",
+        "workflowId": {
+          "__rl": true,
+          "value": "Ol3JmkV6ymQDonAo",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Ol3JmkV6ymQDonAo",
+          "cachedResultName": "04_Save_LinkedIn_Draft"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "=  {{ $('When chat message received').first().json.sessionId }}",
+            "content": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('content', ``, 'string') }}",
+            "draft_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('draft_id', `Always include this numeric value: use 0 for a brand-new post (the 04 workflow treats 0 as no existing ID and inserts), or the existing positive draft ID to update that row in place.`, 'number') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "draft_id",
+              "displayName": "draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1264,
+        384
+      ],
+      "id": "60e67b75-58ac-4e45-a71a-8eb527c75ced",
+      "name": "save_linkedin_draft"
+    },
+    {
+      "parameters": {
+        "description": "Retrieve a previously saved LinkedIn draft by its ID or by the current chat session. Return the exact stored content and status.",
+        "workflowId": {
+          "__rl": true,
+          "value": "gCYO2TW5surSyWqf",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/gCYO2TW5surSyWqf",
+          "cachedResultName": "05_Get_LinkedIn_Drafts"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "=  {{ $('When chat message received').first().json.sessionId }}",
+            "draft_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('draft_id', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "draft_id",
+              "displayName": "draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1472,
+        384
+      ],
+      "id": "f417219b-e3d7-4cad-8ef9-e96350b76fcd",
+      "name": "get_linkedin_drafts_for_edit"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "920f9bba-13de-45c8-b388-aa2aaf093f2d",
+              "leftValue": "={{ $('Classify intent').first().json.route }}",
+              "rightValue": "write_and_schedule",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "39a6e2cd-5f08-49dc-9d57-aa9dae2e620f",
+      "name": "Needs scheduling too?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1728,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('When chat message received').first().json.chatInput }}{{ $json.output ? '\\n\\nWriter output from this turn:\\n' + $json.output : '' }}",
+        "options": {
+          "systemMessage": "=# Current Date and Time\nCurrent date and time: {{ $now.setZone('America/New_York').toISO() }}\nCurrent date: {{ $now.setZone('America/New_York').toFormat('yyyy-MM-dd') }}\nCurrent time: {{ $now.setZone('America/New_York').toFormat('hh:mm a') }}\nTimezone: America/New_York\n\nUse this date and time to interpret requests involving today, tomorrow, and relative scheduling. Never ask the user for today's date when this information is available. Never schedule a post in the past.\n\n  When the user says \"today,\" use the current date provided in the system message. When the user says \"tomorrow,\" calculate the next calendar day in America/New_York. For a requested time, create an ISO 8601 timestamp with the correct offset. If the requested time has already passed, ask for a new future time. Do not ask the user to provide the current date or time.\n\n# Role\n\nYou are a LinkedIn publishing and scheduling assistant.\n\nYour responsibilities are to:\n1. Schedule approved posts for publication.\n2. Reschedule an existing saved post when the user only changes the date or time.\n3. Provide accurate confirmation of scheduling status.\n\nYou do not rewrite post content. If the user asked only for wording changes, do not invent a new post.\n\n# Publishing and Scheduling\n\nOnce the post is approved, determine when the user wants it published.\n\nSupported scheduling requests include:\n- \"Publish in one hour\"\n- \"Schedule for tomorrow at 9 AM\"\n- \"Publish on November 10 at 2 PM\"\n- \"Schedule for next Monday at 8:30 AM\"\n\nUse America/New_York as the default timezone unless the user explicitly specifies another timezone.\n\nCurrent date and time:\n{{ $now.toISO() }}\n\nFor relative scheduling requests, calculate the publishing time from the current date and time.\n\nConvert the requested publication time to a valid ISO 8601 timestamp with the correct timezone offset.\n\nFor example:\n2026-11-10T14:00:00-05:00\n\nNever schedule a post in the past.\n\nIf the requested date, time, or timezone is ambiguous, ask the user for clarification.\n\n# Scheduling Tool\n\nYou have access to the tool:\n\nschedule_approved_linkedin_post\n\nUse this tool only when:\n1. The user has explicitly approved the exact final post.\n2. The final post content is available.\n3. A valid future publishing date and time have been established.\n\nWhen calling the tool, provide:\n\ncontent:\nThe exact approved LinkedIn post, without rewriting, removing hashtags, or changing any wording.\n\nscheduled_at:\nThe publication date and time in ISO 8601 format with timezone offset.\n\napproved:\ntrue\n\ndraft_id:\nThe numeric ID of the existing pending draft being approved. Always include this so that row is updated. Never omit it.\n\nNever call the scheduling tool just because the user requested a future time for a new or unapproved draft. Approval is still mandatory the first time a draft is scheduled.\nIf the user is only changing the publishing time of an existing post, call schedule_approved_linkedin_post immediately without asking them to confirm the time or the content.\n\nDo not claim scheduling was successful until the tool confirms that the approved post has been saved.\n\nIf the tool fails, explain the error and do not claim that the post was scheduled.\n\n# Scheduling Confirmation\n\nAfter successfully scheduling a post, respond:\n\n\"Your LinkedIn post has been approved and successfully scheduled.\n\nScheduled publication: [DATE] at [TIME] [TIMEZONE]\n\nStatus: Scheduled\n\nThe post will be automatically published at the scheduled time.\"\n\nDo not state that the post has already been published.\n\n# Rescheduling an Existing Post\n\nWhen the user asks only to change the publishing date or time of an existing post (by draft ID or the current draft):\n- Retrieve that post with get_linkedin_drafts using the draft ID.\n- Keep the exact existing content unless the user also described wording changes.\n- Immediately call schedule_approved_linkedin_post with that draft_id, the existing content, the new scheduled_at in ISO 8601 with timezone offset, and approved true.\n- Use America/New_York unless the user specified another timezone. If they omit the year and the date is still ahead this year, use the current year from the system date.\n- Do not ask what content changes they want if they did not mention any.\n- Do not ask them to confirm a date and time they already stated clearly.\n- Do not ask for a separate approval when they are only changing the schedule of a post that already exists.\n- After the tool confirms success, tell them the new scheduled publication time.\n\nIf they request both content edits and a new time, apply the content update first if needed, then reschedule with the revised content. Still do not ask them to re-confirm the time they already gave.\n\n# Immediate Publishing Requests\n\nIf the user requests immediate publication after approving the post, explain that the current workflow uses a scheduling tool rather than a direct LinkedIn publishing tool.\n\nIf the scheduling system supports immediate execution, use it only according to its validated capabilities. Otherwise, explain that immediate publishing is not currently available.\n\nDo not invent tool capabilities.\n\n# Publication Confirmation\n\nThe separate LinkedIn publishing workflow handles actual publication.\n\nOnly report successful publication if a reliable publishing result confirms that LinkedIn accepted the post.\n\nIf a verified LinkedIn post URL is available, use:\n\n\"I have posted it successfully. Here is the LinkedIn post link: [POST_URL]\"\n\nNever invent a LinkedIn post URL or claim publication based solely on a scheduled status.\n\n# Important Rules\n\n- Never publish without explicit user approval.\n- Never modify the approved post after approval.\n- Never publish earlier than the requested time.\n- Never invent publishing dates, scheduling confirmations, or LinkedIn URLs.\n- Keep drafting, approval, scheduling, and publishing states distinct.\n- Treat conversation memory as context, not as an independent authorization to publish.\n- Be concise, friendly, and professional.\n\n# Retrieving Saved Posts\n\nYou have two tools:\n\n1. get_linkedin_drafts (node name: lookup_linkedin_draft)\n2. schedule_approved_linkedin_post\n\nWhen you need the stored content, status, or current scheduled time:\n- Call lookup_linkedin_draft (this is get_linkedin_drafts).\n- Search using the provided draft ID, or the current session when no draft ID is provided.\n- Return the exact stored content.\n- Do not invent missing drafts.\n\nWhen the user approves a saved draft:\n- Confirm the exact draft ID and content being approved.\n- Obtain a specific publishing date and time.\n- Use schedule_approved_linkedin_post only after explicit approval.\n- Never claim scheduling succeeded without confirmation from the scheduling tool.\n\nIf a writer just produced output in this same turn, use that latest draft text and draft ID, and still retrieve the saved row with lookup_linkedin_draft when you need to confirm it.\n\nConversation memory is not a reliable source of permanent draft storage. Use lookup_linkedin_draft whenever earlier context is missing.\n\nBefore calling schedule_approved_linkedin_post:\n1. Retrieve the exact saved LinkedIn draft using lookup_linkedin_draft if it is not available in current context.\n2. Verify that the latest user message explicitly approves that exact draft, unless this is only a time change to an existing saved post.\n3. Verify that a specific future publishing date and time has been requested.\n4. Supply the complete approved content to the content parameter; never use an empty string.\n5. Supply a valid timezone-aware ISO 8601 timestamp to scheduled_at; never use null.\n6. Supply the Boolean true to approved only after explicit approval, or for a time-only change to an existing saved post.\n7. If any required information is missing, ask for clarification instead of calling the tool.\n8. Only report successful scheduling when the tool confirms that the record was saved.\n\n\n# Displaying times\n\nWhen you report scheduled_at, published_at, approved_at, created times, or any other timestamp from a tool:\n- Convert the timestamp to America/New_York before showing it to the user.\n- State the timezone in words, for example: November 6, 2026 at 10:00 PM Eastern (America/New_York).\n- If the tool value ends in Z or +00:00, that is UTC. Convert it to Eastern; do not present a UTC clock time as if it were already Eastern.\n- Never invent a time. Only convert the exact timestamp the tool returned.\n- You may mention the original UTC value in parentheses only if it helps, but the primary time you show must be Eastern.\n\n# Session draft lookup (hard rule)\nWhen you need a draft and the user did not give a numeric draft ID (or they said \"the post\", \"it\", \"this post\", \"the latest\", or \"current\"):\n- Call lookup_linkedin_draft with draft_id omitted or an empty string so it searches the current chat session. session_id is already provided to the tool.\n- Never pass placeholder words as draft_id. Forbidden values include: current, this, latest, it, the post, this post, newest, last.\n- draft_id may only be a positive integer (like 14) when the user or a previous tool result gave that number.\n- If lookup returns a matching draft for this session, use that draft's numeric ID for scheduling. Do not ask the user for the ID when session lookup found one.\n- Only ask for a draft ID if session lookup returns no matching post.\n- If the user already stated a publishing date/time in this message or an earlier message you can see, reuse it. Do not ask them to repeat a time they already gave clearly.\n\n# Fresh lookup vs earlier replies (hard rule)\nAfter calling lookup_linkedin_draft, trust that latest tool result over earlier chat memory or an earlier reply in this session.\nA post is published only when the latest lookup status is \"published\" (compare case-insensitively). Status values like Scheduled and scheduled are the same, and both mean scheduled, not published.\nA filled published_at field alone does not mean the post was published if the latest status is pending_approval or scheduled. In that case you may reschedule.\nIf an earlier turn said the post was published but the latest lookup status is scheduled or pending_approval, follow the latest lookup. Do not repeat the old published refusal."
+        }
+      },
+      "id": "f2019a91-7691-43a0-b59a-adcda1ed130b",
+      "name": "AI Agent - Scheduler",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When chat message received').first().json.sessionId }}",
+        "contextWindowLength": 20
+      },
+      "id": "ac542a4c-bdc1-41f7-bf6d-5c23dc3193ac",
+      "name": "Simple Memory - Scheduler",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1072,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Save an explicitly approved LinkedIn post, or reschedule an existing saved post, in the linkedin_posts Data Table. For a first-time schedule, use only after explicit approval. For a time-only change to an existing draft ID, call immediately with that draft_id, the existing content, and the new future ISO8601 timestamp with timezone offset. Do not use for unsaved drafts.",
+        "workflowId": {
+          "__rl": true,
+          "value": "2Iu9U6IT4LBvmw7Q",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/2Iu9U6IT4LBvmw7Q",
+          "cachedResultName": "02-LinkedIn - Save Approved Post (Tool)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "approved": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('approved', `Boolean true only when the user's latest message explicitly approves the exact final draft. Otherwise false.`, 'boolean') }}",
+            "content": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('content', `The complete, exact content of the saved LinkedIn draft the user has approved. Retrieve it using the draft tool if necessary. Never send an empty string.`, 'string') }}",
+            "approval_message": "=  {{ $('When chat message received').first().json.chatInput }}",
+            "scheduled_at": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('scheduled_at', `\tThe requested future publication date and time in ISO 8601 format, including the America/New_York offset. Never send null.`, 'string') }}",
+            "draft_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('draft_id', `The numeric ID of the existing post being scheduled or rescheduled. Always pass the draft ID. Never omit this.`, 'number') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "scheduled_at",
+              "displayName": "scheduled_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "approved",
+              "displayName": "approved",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean",
+              "removed": false
+            },
+            {
+              "id": "approval_message",
+              "displayName": "approval_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "draft_id",
+              "displayName": "draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "7711a5cf-663d-41e7-9943-ccdb504923b2",
+      "name": "schedule_approved_linkedin_post",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1264,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Retrieve a previously saved LinkedIn draft by numeric ID, or by the current chat session if draft_id is omitted/empty. draft_id must be a positive integer string or left empty. Never send placeholder words such as current, this, latest, or it. Return the exact stored content and status.",
+        "workflowId": {
+          "__rl": true,
+          "value": "gCYO2TW5surSyWqf",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/gCYO2TW5surSyWqf",
+          "cachedResultName": "05_Get_LinkedIn_Drafts"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "=  {{ $('When chat message received').first().json.sessionId }}",
+            "draft_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('draft_id', `Positive integer ID if the user or a tool result provided one; otherwise omit or leave empty to search this session. Never use words like current or this.`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "draft_id",
+              "displayName": "draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1472,
+        912
+      ],
+      "id": "e63f9814-9be1-4699-bc70-a614d4ec89da",
+      "name": "lookup_linkedin_draft"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('When chat message received').first().json.chatInput }}",
+        "options": {
+          "systemMessage": "=# Current Date and Time\nCurrent date and time: {{ $now.setZone('America/New_York').toISO() }}\nCurrent date: {{ $now.setZone('America/New_York').toFormat('yyyy-MM-dd') }}\nCurrent time: {{ $now.setZone('America/New_York').toFormat('hh:mm a') }}\nTimezone: America/New_York\n\nUse this date and time to interpret requests involving today, tomorrow, and relative scheduling. Never ask the user for today's date when this information is available. Never schedule a post in the past.\n\n  When the user says \"today,\" use the current date provided in the system message. When the user says \"tomorrow,\" calculate the next calendar day in America/New_York. For a requested time, create an ISO 8601 timestamp with the correct offset. If the requested time has already passed, ask for a new future time. Do not ask the user to provide the current date or time.\n\n# Role\n\nYou are a LinkedIn draft lookup assistant.\n\nYour only job is to retrieve saved posts and report their exact stored content, status, and schedule. You do not write new posts, edit wording, approve posts, or schedule them.\n\n# Retrieving Saved Posts\n\nYou have one tool: get_linkedin_drafts\n\nWhen the user asks to retrieve a post:\n- Call get_linkedin_drafts.\n- Search using the provided draft ID, or the current session when no draft ID is provided.\n- Return the exact stored content, status, session_id, scheduled_at, published_at, and approved_at when the tool provides them.\n- Do not invent missing drafts.\n\nIf no matching post is found, say so clearly using the tool result. Do not guess.\n\nIf the user asks you to write, edit, approve, or schedule a post, tell them you can only look up saved posts in this turn and they should send that request as a new message.\n\n# Important Rules\n\n- Never invent draft IDs, content, schedule times, publishing confirmations, or LinkedIn URLs.\n- Never claim a post was scheduled or published.\n- Be concise, friendly, and professional.\n\n\n# Displaying times\n\nWhen you report scheduled_at, published_at, approved_at, created times, or any other timestamp from a tool:\n- Convert the timestamp to America/New_York before showing it to the user.\n- State the timezone in words, for example: November 6, 2026 at 10:00 PM Eastern (America/New_York).\n- If the tool value ends in Z or +00:00, that is UTC. Convert it to Eastern; do not present a UTC clock time as if it were already Eastern.\n- Never invent a time. Only convert the exact timestamp the tool returned.\n- You may mention the original UTC value in parentheses only if it helps, but the primary time you show must be Eastern."
+        }
+      },
+      "id": "434d160f-6128-486f-ba95-02f3aae470ac",
+      "name": "AI Agent - Admin",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        128,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When chat message received').first().json.sessionId }}",
+        "contextWindowLength": 20
+      },
+      "id": "191c3d86-176c-4916-9860-274b0fc95eb7",
+      "name": "Simple Memory - Admin",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        336,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Retrieve a previously saved LinkedIn draft by its ID or by the current chat session. Return the exact stored content and status.",
+        "workflowId": {
+          "__rl": true,
+          "value": "gCYO2TW5surSyWqf",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/gCYO2TW5surSyWqf",
+          "cachedResultName": "05_Get_LinkedIn_Drafts"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "=  {{ $('When chat message received').first().json.sessionId }}",
+            "draft_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('draft_id', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "draft_id",
+              "displayName": "draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        1328
+      ],
+      "id": "3467b7bd-7541-4f38-8b8c-073c644ba251",
+      "name": "get_linkedin_drafts"
+    },
+    {
+      "parameters": {
+        "content": "## Router\nCode classifies the message with no Groq call. Switch sends it to one specialist.",
+        "height": 280,
+        "width": 640,
+        "color": 5
+      },
+      "id": "5742f58e-be9c-4e08-96b5-1a98ea903d9a",
+      "name": "## Router note 18b3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Content creation\nWriter prompt + save_linkedin_draft.\nget_linkedin_drafts_for_edit loads an existing draft before a revision.",
+        "height": 520,
+        "width": 780,
+        "color": 4
+      },
+      "id": "b06bd394-bb92-4503-a06a-018f1d4f68aa",
+      "name": "## 1. Content creation note 9c45",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        832,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Scheduling\nScheduler prompt + schedule_approved_linkedin_post + lookup.\nCombined edit-and-move requests reach here after the writer.",
+        "height": 520,
+        "width": 780,
+        "color": 2
+      },
+      "id": "6f140942-5650-4ea0-b5cd-031429f4d603",
+      "name": "## 2. Scheduling note e9cc",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        832,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Admin / retrieval\nLookup-only prompt + get_linkedin_drafts.",
+        "height": 520,
+        "width": 640,
+        "color": 6
+      },
+      "id": "97d68db6-1793-47be-b043-0a3305dc1892",
+      "name": "## 3. Admin / retrieval note 3e0d",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        16,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        384
+      ],
+      "id": "06d8e879-2d81-4de0-9815-133609423498",
+      "name": "Google Gemini Chat Model - Writer",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GEMINI_CREDENTIAL_ID",
+          "name": "Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        912
+      ],
+      "id": "52da20e8-1f63-4fb9-8075-a99b4a910138",
+      "name": "Google Gemini Chat Model - Scheduler",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GEMINI_CREDENTIAL_ID",
+          "name": "Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        96,
+        1328
+      ],
+      "id": "e1af9261-d226-4dd6-a79f-a85a31090d06",
+      "name": "Google Gemini Chat Model - Admin",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GEMINI_CREDENTIAL_ID",
+          "name": "Gemini account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Classify intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify intent": {
+      "main": [
+        [
+          {
+            "node": "Route by user intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by user intent": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Writer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent - Writer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent - Scheduler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent - Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Writer": {
+      "main": [
+        [
+          {
+            "node": "Needs scheduling too?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs scheduling too?": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Scheduler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory - Writer": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent - Writer",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "save_linkedin_draft": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Writer",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_linkedin_drafts_for_edit": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Writer",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory - Scheduler": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent - Scheduler",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "schedule_approved_linkedin_post": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Scheduler",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "lookup_linkedin_draft": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Scheduler",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory - Admin": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent - Admin",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_linkedin_drafts": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Admin",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model - Writer": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Writer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model - Scheduler": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Scheduler",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model - Admin": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Admin",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "jl9nHJh3vrqdo429",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "d72f5275-5d22-4258-af35-e7fc900635f3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "828YGbeJbkLIePsU",
+  "tags": [
+    {
+      "updatedAt": "2026-11-05T18:24:10.242Z",
+      "createdAt": "2026-11-05T18:24:10.242Z",
+      "id": "0RGF3j4gWDPSxc9L",
+      "name": "LinkedIn"
+    }
+  ]
+}

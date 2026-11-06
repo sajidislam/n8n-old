@@ -1,0 +1,1096 @@
+{
+  "name": "08-LinkedIn - Web UI",
+  "nodes": [
+    {
+      "parameters": {
+        "multipleMethods": true,
+        "path": "linkedin-posts",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d08ed0b8-bf39-4619-8653-37f14da770db",
+      "name": "Page Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        2816,
+        2480
+      ],
+      "webhookId": "1c02544c-eb62-4743-8138-4722abf89246"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json || {};\nconst body = (raw.body && typeof raw.body === 'object' && !Array.isArray(raw.body)) ? { ...raw, ...raw.body } : raw;\nconst query = raw.query && typeof raw.query === 'object' ? raw.query : {};\nconst action = String(body.action || query.action || '').trim().toLowerCase();\nreturn [{ json: { ...query, ...body, action, _message: '', _error: '' } }];\n"
+      },
+      "id": "1945b81e-df31-4e3a-bc6c-f461d26d0d65",
+      "name": "Normalize Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3040,
+        2480
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8dbe79c0-50ea-47bf-bcb2-ea158d677890",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "generate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "generate"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "58b36ac2-48d8-4820-95d1-d54a5bfbfabf",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "save",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "save"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6551a197-d3cf-4ddc-a353-98999180e67d",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "schedule",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "schedule"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "2d35c4f1-dabc-4b7b-84ae-660d9cc61817",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "delete",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "delete"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "48413041-5316-4a8f-ab88-cde234c1de83",
+      "name": "Route Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        3264,
+        2480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst p = $input.first().json;\nconst idea = String(p.idea || '').trim();\nconst session_id = String(p.session_id || '').trim();\nconst rawId = p.draft_id;\nconst draft_id = (rawId === undefined || rawId === null || rawId === '' || rawId === 0 || rawId === '0') ? 0 : Number(rawId);\nif (!idea) {\n  return [{ json: { ...p, _skip: true, _error: 'Type or paste an idea first.', _message: '', idea } }];\n}\nif (!session_id) {\n  return [{ json: { ...p, _skip: true, _error: 'Missing session_id', _message: '', idea } }];\n}\nconst prompt = [\n  'Write a complete LinkedIn post from the idea below.',\n  'Return ONLY the post text. No title, preamble, markdown fences, or commentary.',\n  'Keep it under 2800 characters. Use a natural professional voice.',\n  '',\n  'IDEA:',\n  idea,\n].join('\\n');\nreturn [{ json: { ...p, idea, session_id, draft_id, prompt, text: prompt, _skip: false, _error: '', _message: '' } }];\n"
+      },
+      "id": "1675de7d-73a9-4b98-9d6d-a172ae42159a",
+      "name": "Prep Generate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "batching": {}
+      },
+      "id": "10193103-b192-4814-a012-368acc8d5cdf",
+      "name": "Write LinkedIn Draft",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        3760,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "id": "e26a4d3f-f758-4817-8e6b-a628bbcb8614",
+      "name": "Gemini 3.5 Flash Lite",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3760,
+        2336
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GEMINI_CREDENTIAL_ID",
+          "name": "Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst req = $('Prep Generate').first().json;\nif (req._skip) return [{ json: req }];\nconst out = $input.first().json || {};\nlet content = String(out.text || out.output || out.response || out.content || '').trim();\nif (!content && typeof out.message === 'string') content = out.message.trim();\ncontent = content.replace(/^```[a-z]*\\n?/i, '').replace(/```$/, '').trim();\nif (!content) return [{ json: { ...req, _error: 'The model returned an empty draft. Try generating again.', _selectedId: null } }];\nif (content.length > 3000) content = content.slice(0, 3000).trim();\nreturn [{ json: { ...req, content, session_id: req.session_id, draft_id: req.draft_id || 0, _error: '' } }];\n"
+      },
+      "id": "8824e950-5f3c-47ae-ac46-cb275d3655b2",
+      "name": "Prep Save Generated",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4000,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Ol3JmkV6ymQDonAo",
+          "mode": "list",
+          "cachedResultName": "04_Save_LinkedIn_Draft",
+          "cachedResultUrl": "/workflow/Ol3JmkV6ymQDonAo"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "content": "={{ $json.content }}",
+            "session_id": "={{ $json.session_id }}",
+            "draft_id": "={{ $json.draft_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "draft_id",
+              "displayName": "draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7b5a23a5-1b9c-42d9-9309-ee9e179f6f68",
+      "name": "Save Generated Draft",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        4240,
+        2160
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst req = $('Prep Generate').first().json;\nconst saved = $input.first().json || {};\nif (req._skip || req._error) {\n  return [{ json: { _message: '', _error: req._error || '', _selectedId: null, idea: req.idea || '' } }];\n}\nconst err = saved.error || saved.message && saved.success === false ? (saved.error || saved.message) : '';\nif (saved.error || /Missing |exceeds |did not return/i.test(String(saved.message || ''))) {\n  return [{ json: { _message: '', _error: String(saved.error || saved.message || 'Could not save the draft'), _selectedId: null, idea: req.idea || '' } }];\n}\nconst draftId = saved.draft_id || saved.id || null;\nreturn [{ json: { _message: draftId ? ('Draft #' + draftId + ' is ready to review.') : 'Draft saved.', _error: '', _selectedId: draftId, idea: req.idea || '' } }];\n"
+      },
+      "id": "292a6341-c4c2-4d52-8146-e38cb11ec276",
+      "name": "After Generate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4480,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst p = $input.first().json;\nconst content = String(p.content || '').trim();\nconst session_id = String(p.session_id || '').trim();\nconst status = String(p.status || 'pending_approval').trim().toLowerCase();\nconst rawId = p.draft_id;\nconst draft_id = (rawId === undefined || rawId === null || rawId === '' || rawId === 0 || rawId === '0') ? 0 : Number(rawId);\nif (!content) return [{ json: { ...p, _skip: true, _error: 'The draft is empty.', reopenFailed: false } }];\nif (!session_id) return [{ json: { ...p, _skip: true, _error: 'Missing session_id', reopenFailed: false } }];\nif (content.length > 3000) return [{ json: { ...p, _skip: true, _error: 'LinkedIn draft exceeds 3000 characters', reopenFailed: false } }];\nreturn [{ json: { content, session_id, draft_id, status, reopenFailed: status === 'failed', _skip: false, _error: '', _message: '' } }];\n"
+      },
+      "id": "873337ab-0353-4ac3-a41b-3de7262dbb5d",
+      "name": "Prep Save",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        2560
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dd425e38-1424-4b0c-b93c-0d3436d2791d",
+              "leftValue": "={{ $json.reopenFailed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b68a5b09-b4fd-4838-b654-a3c99493f88a",
+      "name": "Is Failed Reopen",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3760,
+        2560
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "linkedin_posts"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.draft_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "scheduled_at",
+              "displayName": "scheduled_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "published_at",
+              "displayName": "published_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "approved_at",
+              "displayName": "approved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "value": {
+            "content": "={{ $json.content }}",
+            "status": "pending_approval"
+          },
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "dryRun": false
+        }
+      },
+      "id": "6fe5def4-f253-4f60-ac16-c0d38715d9a0",
+      "name": "Reopen Failed Draft",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4000,
+        2464
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Ol3JmkV6ymQDonAo",
+          "mode": "list",
+          "cachedResultName": "04_Save_LinkedIn_Draft",
+          "cachedResultUrl": "/workflow/Ol3JmkV6ymQDonAo"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "content": "={{ $json.content }}",
+            "session_id": "={{ $json.session_id }}",
+            "draft_id": "={{ $json.draft_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "draft_id",
+              "displayName": "draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e7e6a839-90fb-4cb4-b68b-62e99b3bfe6a",
+      "name": "Save Draft Edits",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        4000,
+        2688
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst req = $('Prep Save').first().json;\nconst saved = $input.first().json || {};\nif (req._skip) return [{ json: { _message: '', _error: req._error || '', _selectedId: req.draft_id || null } }];\nconst draftId = saved.draft_id || saved.id || req.draft_id || null;\nreturn [{ json: { _message: 'Saved draft #' + (draftId || '') + '.', _error: '', _selectedId: draftId } }];\n"
+      },
+      "id": "a1bbaacf-f876-4e68-a577-fa4db693cb55",
+      "name": "After Save",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4240,
+        2560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst p = $input.first().json;\nconst content = String(p.content || '').trim();\nconst scheduled_at = String(p.scheduled_at || '').trim();\nconst draft_id = Number(p.draft_id);\nconst status = String(p.status || '').trim().toLowerCase();\nif (!Number.isFinite(draft_id) || draft_id <= 0) {\n  return [{ json: { ...p, _skip: true, _error: 'Generate or select a draft first.' } }];\n}\nif (!content) return [{ json: { ...p, _skip: true, _error: 'The draft is empty.', draft_id } }];\nif (!/(Z|[+-]\\d{2}:\\d{2})$/.test(scheduled_at)) {\n  return [{ json: { ...p, _skip: true, _error: 'Pick a valid future date and time.', draft_id } }];\n}\nconst isReschedule = status === 'scheduled';\nreturn [{ json: {\n  content, scheduled_at, draft_id, approved: true,\n  approval_message: isReschedule ? 'reschedule the publishing time' : 'yes, schedule the post',\n  _skip: false, _error: '', _message: ''\n} }];\n"
+      },
+      "id": "b501fc72-1922-4397-9300-b352e3dbce78",
+      "name": "Prep Schedule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        2960
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "2Iu9U6IT4LBvmw7Q",
+          "mode": "list",
+          "cachedResultName": "02-LinkedIn - Save Approved Post (Tool)",
+          "cachedResultUrl": "/workflow/2Iu9U6IT4LBvmw7Q"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "content": "={{ $json.content }}",
+            "scheduled_at": "={{ $json.scheduled_at }}",
+            "approved": "={{ $json.approved }}",
+            "approval_message": "={{ $json.approval_message }}",
+            "draft_id": "={{ $json.draft_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "scheduled_at",
+              "displayName": "scheduled_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "approved",
+              "displayName": "approved",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean",
+              "removed": false
+            },
+            {
+              "id": "approval_message",
+              "displayName": "approval_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "draft_id",
+              "displayName": "draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7180977e-14c0-459f-9092-42052de5b4a5",
+      "name": "Schedule via 02",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3760,
+        2960
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst req = $('Prep Schedule').first().json;\nconst saved = $input.first().json || {};\nif (req._skip) return [{ json: { _message: '', _error: req._error || '', _selectedId: req.draft_id || null } }];\nconst errText = String(saved.error || saved.message || '');\nif (saved.success === false || /must be in the future|already been published|cannot be scheduled|No unique draft|explicit approval/i.test(errText) && saved.success !== true) {\n  if (saved.success !== true && (saved.error || /must be in the future|already been published|cannot be scheduled|No unique draft|explicit approval|Missing |too long/i.test(errText))) {\n    return [{ json: { _message: '', _error: errText || 'Could not schedule the post', _selectedId: req.draft_id } }];\n  }\n}\nconst draftId = saved.draft_id || req.draft_id;\nconst when = saved.scheduled_at || req.scheduled_at;\nreturn [{ json: {\n  _message: 'Scheduled draft #' + draftId + '. Workflow 03 will publish it when that time is due.',\n  _error: '',\n  _selectedId: draftId,\n} }];\n"
+      },
+      "id": "499112af-5e70-4a21-9a62-3b18ebfc3f9b",
+      "name": "After Schedule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4000,
+        2960
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $input.first().json || {}; return [{ json: { _message: p._message || '', _error: p._error || '', _selectedId: p._selectedId || null, idea: p.idea || '' } }];"
+      },
+      "id": "ce591671-4393-49fb-917e-da3839acadf3",
+      "name": "Pass For Render",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        3200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Keep flash message on this item; next node loads table rows.\nconst meta = $input.first().json || {};\nreturn [{ json: meta }];\n"
+      },
+      "id": "dff3f378-57e9-4c35-97be-669a2b049e3f",
+      "name": "Keep Flash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4720,
+        2480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "linkedin_posts"
+        },
+        "returnAll": true
+      },
+      "id": "453b8ea0-e3c0-4150-8d80-f046db208d56",
+      "name": "Get all posts",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4944,
+        2480
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const PAGE_HTML = \"<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"UTF-8\\\" />\\n  <meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1\\\" />\\n  <title>LinkedIn Posts</title>\\n  <style>\\n    :root {\\n      --blue: #0a66c2;\\n      --blue-hover: #004182;\\n      --navy: #1d2226;\\n      --muted: #666666;\\n      --line: #e6e9ec;\\n      --bg: #f4f6f8;\\n      --card: #ffffff;\\n      --amber: #b45309;\\n      --amber-bg: #fff7ed;\\n      --red: #b42318;\\n      --red-bg: #fef3f2;\\n      --green: #067647;\\n      --green-bg: #ecfdf3;\\n      --sky: #175cd3;\\n      --sky-bg: #eff8ff;\\n      --select: #e8f3ff;\\n    }\\n    * { box-sizing: border-box; }\\n    html, body { margin: 0; height: 100%; }\\n    body {\\n      font-family: -apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Helvetica, Arial, sans-serif;\\n      color: var(--navy);\\n      background: var(--bg);\\n    }\\n    header {\\n      display: flex;\\n      align-items: center;\\n      justify-content: space-between;\\n      gap: 16px;\\n      padding: 16px 28px;\\n      background: var(--card);\\n      border-bottom: 1px solid var(--line);\\n    }\\n    .brand { display: flex; align-items: center; gap: 12px; }\\n    .logo {\\n      width: 36px; height: 36px; border-radius: 8px; background: var(--blue);\\n      color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 18px;\\n    }\\n    h1 { font-size: 20px; margin: 0; }\\n    .subtitle { margin: 2px 0 0; color: var(--muted); font-size: 13px; }\\n    .tz {\\n      border: 1px solid var(--line); background: #fff; border-radius: 999px;\\n      padding: 6px 12px; font-size: 13px; color: var(--muted);\\n    }\\n    main {\\n      display: grid;\\n      grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.9fr);\\n      gap: 0;\\n      height: calc(100vh - 73px);\\n    }\\n    .pane { overflow: auto; }\\n    .main-pane { padding: 28px 32px 40px; }\\n    .side-pane { border-left: 1px solid var(--line); background: #fbfcfd; padding: 28px 22px 40px; }\\n    h2 { font-size: 18px; margin: 0 0 12px; }\\n    textarea, input[type=\\\"datetime-local\\\"] {\\n      width: 100%; border: 1px solid var(--line); border-radius: 10px;\\n      padding: 12px 14px; font: inherit; color: var(--navy); background: #fff;\\n    }\\n    textarea { min-height: 110px; resize: vertical; }\\n    textarea:focus, input:focus { outline: 2px solid #cfe3f8; border-color: var(--blue); }\\n    .row { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0 28px; }\\n    button {\\n      font: inherit; border: 0; cursor: pointer; border-radius: 8px;\\n      padding: 10px 16px; font-weight: 600;\\n    }\\n    button:disabled { opacity: .55; cursor: not-allowed; }\\n    .btn-primary { background: var(--blue); color: #fff; }\\n    .btn-primary:hover:not(:disabled) { background: var(--blue-hover); }\\n    .btn-secondary { background: #fff; color: var(--navy); border: 1px solid var(--line); }\\n    .btn-ghost { background: transparent; color: var(--blue); padding-left: 0; }\\n    .draft-card {\\n      background: var(--card); border: 1px solid var(--line); border-radius: 12px;\\n      box-shadow: 0 1px 2px rgba(0,0,0,.04); overflow: hidden;\\n    }\\n    .draft-card .inner { padding: 18px 20px 8px; border-left: 4px solid var(--blue); }\\n    .meta { color: var(--muted); font-size: 13px; margin-bottom: 10px; }\\n    #draftText {\\n      width: 100%; min-height: 220px; border: 0; padding: 0 0 8px; resize: vertical;\\n      background: transparent;\\n    }\\n    #draftText:focus { outline: none; }\\n    .draft-actions {\\n      display: flex; flex-wrap: wrap; align-items: center; gap: 10px;\\n      padding: 12px 16px 16px 20px; border-top: 1px solid var(--line);\\n    }\\n    .draft-actions .grow { margin-left: auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }\\n    .draft-actions input[type=\\\"datetime-local\\\"] { width: auto; min-width: 220px; }\\n    .empty { color: var(--muted); padding: 18px 4px 8px; }\\n    .banner {\\n      display: none; margin: 0 0 16px; padding: 10px 12px; border-radius: 8px; font-size: 14px;\\n    }\\n    .banner.error { display: block; background: var(--red-bg); color: var(--red); }\\n    .banner.ok { display: block; background: var(--green-bg); color: var(--green); }\\n    .hint { color: var(--amber); font-size: 13px; font-weight: 600; margin: 0 0 12px; }\\n    .queue { display: flex; flex-direction: column; gap: 10px; }\\n    .filters { display: flex; flex-direction: column; gap: 6px; margin: 0 0 14px; }\\n    .filter-row {\\n      display: flex; align-items: center; gap: 8px; margin: 0;\\n      font-size: 13px; color: var(--muted);\\n    }\\n    .pager {\\n      display: flex; align-items: center; justify-content: space-between; gap: 8px;\\n      margin-top: 14px; font-size: 13px; color: var(--muted);\\n    }\\n    .pager .btn-secondary { padding: 6px 12px; font-size: 13px; }\\n    .filter-row input { width: auto; accent-color: var(--blue); }\\n    .card {\\n      background: #fff; border: 1px solid var(--line); border-radius: 12px;\\n      padding: 14px 14px 12px; cursor: pointer; text-align: left; width: 100%;\\n    }\\n    .btn-delete {\\n      background: transparent; color: var(--red); border: 1px solid #f0c2c0;\\n      padding: 4px 10px; font-size: 12px; font-weight: 700; border-radius: 8px;\\n      margin-left: 8px; flex-shrink: 0;\\n    }\\n    .btn-delete:hover { background: var(--red-bg); }\\n    .card:hover { border-color: #c5d8ee; }\\n    .card.selected { background: var(--select); border-color: #b9d6f5; }\\n    .card .preview {\\n      font-size: 14px; line-height: 1.4; margin: 0 0 10px;\\n      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;\\n    }\\n    .card .foot { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }\\n    .pill {\\n      display: inline-flex; align-items: center; border-radius: 999px;\\n      padding: 2px 8px; font-weight: 700; font-size: 11px;\\n    }\\n    .pill.needs { background: var(--amber-bg); color: var(--amber); }\\n    .pill.failed { background: var(--red-bg); color: var(--red); }\\n    .pill.scheduled { background: var(--sky-bg); color: var(--sky); }\\n    .pill.published { background: var(--green-bg); color: var(--green); }\\n    .pill.publishing { background: #f4f3ff; color: #5925dc; }\\n    .foot .when { margin-left: auto; }\\n    .side-note { color: var(--muted); font-size: 12px; text-align: center; margin-top: 16px; }\\n    @media (max-width: 900px) {\\n      main { grid-template-columns: 1fr; height: auto; }\\n      .side-pane { border-left: 0; border-top: 1px solid var(--line); }\\n    }\\n  </style>\\n</head>\\n<body>\\n  <script>/*__INITIAL__*/</script>\\n  <header>\\n    <div class=\\\"brand\\\">\\n      <div class=\\\"logo\\\">in</div>\\n      <div>\\n        <h1>LinkedIn Posts</h1>\\n        <p class=\\\"subtitle\\\">Draft, review, and schedule</p>\\n      </div>\\n    </div>\\n    <div class=\\\"tz\\\">America/New_York</div>\\n  </header>\\n  <main>\\n    <section class=\\\"pane main-pane\\\">\\n      <div id=\\\"banner\\\" class=\\\"banner\\\"></div>\\n      <div style=\\\"display:flex;align-items:center;justify-content:space-between;gap:12px;\\\">\\n        <h2>New post idea</h2>\\n        <a class=\\\"btn-ghost\\\" href=\\\"https://n8n.example.com/webhook/linkedin-posts\\\" style=\\\"text-decoration:none;display:inline-block;padding:10px 0;\\\">Start a new idea</a>\\n      </div>\\n      <form id=\\\"generateForm\\\" method=\\\"POST\\\" action=\\\"https://n8n.example.com/webhook/linkedin-posts\\\">\\n        <input type=\\\"hidden\\\" name=\\\"action\\\" value=\\\"generate\\\" />\\n        <input type=\\\"hidden\\\" name=\\\"session_id\\\" />\\n        <input type=\\\"hidden\\\" name=\\\"draft_id\\\" id=\\\"generateDraftId\\\" value=\\\"0\\\" />\\n        <textarea id=\\\"idea\\\" name=\\\"idea\\\" placeholder=\\\"Type or paste your idea\\u2026\\\" required></textarea>\\n        <div class=\\\"row\\\">\\n          <button class=\\\"btn-primary\\\" id=\\\"generateBtn\\\" type=\\\"submit\\\">Generate draft</button>\\n        </div>\\n      </form>\\n      <h2>Draft for review</h2>\\n      <div id=\\\"draftEmpty\\\" class=\\\"empty\\\">Generate a draft or click a post in the queue to review it here.</div>\\n      <form id=\\\"editorForm\\\" class=\\\"draft-card\\\" method=\\\"POST\\\" action=\\\"https://n8n.example.com/webhook/linkedin-posts\\\" hidden>\\n        <input type=\\\"hidden\\\" name=\\\"action\\\" id=\\\"editorAction\\\" value=\\\"save\\\" />\\n        <input type=\\\"hidden\\\" name=\\\"session_id\\\" />\\n        <input type=\\\"hidden\\\" name=\\\"draft_id\\\" id=\\\"editorDraftId\\\" />\\n        <input type=\\\"hidden\\\" name=\\\"status\\\" id=\\\"editorStatus\\\" />\\n        <input type=\\\"hidden\\\" name=\\\"scheduled_at\\\" id=\\\"scheduledAtIso\\\" />\\n        <div class=\\\"inner\\\">\\n          <div class=\\\"meta\\\" id=\\\"draftMeta\\\"></div>\\n          <textarea id=\\\"draftText\\\" name=\\\"content\\\" aria-label=\\\"Draft text\\\"></textarea>\\n        </div>\\n        <div class=\\\"draft-actions\\\">\\n          <span id=\\\"draftNotice\\\" class=\\\"empty\\\" style=\\\"padding:0;margin-right:8px;\\\"></span>\\n          <div class=\\\"grow\\\">\\n            <input id=\\\"scheduleAt\\\" type=\\\"datetime-local\\\" />\\n            <button class=\\\"btn-secondary\\\" id=\\\"saveBtn\\\" type=\\\"submit\\\" data-action=\\\"save\\\">Save edits</button>\\n            <button class=\\\"btn-primary\\\" id=\\\"scheduleBtn\\\" type=\\\"submit\\\" data-action=\\\"schedule\\\">Schedule post</button>\\n          </div>\\n        </div>\\n      </form>\\n    </section>\\n    <aside class=\\\"pane side-pane\\\">\\n      <h2>Queue</h2>\\n      <div class=\\\"filters\\\">\\n        <label class=\\\"filter-row\\\">\\n          <input type=\\\"checkbox\\\" id=\\\"hidePublished\\\" checked />\\n          Hide published posts\\n        </label>\\n        <label class=\\\"filter-row\\\">\\n          <input type=\\\"checkbox\\\" id=\\\"waitingOnMe\\\" />\\n          Waiting on me\\n        </label>\\n        <label class=\\\"filter-row\\\">\\n          <input type=\\\"checkbox\\\" id=\\\"onlyScheduled\\\" />\\n          Scheduled\\n        </label>\\n      </div>\\n      <p class=\\\"hint\\\" id=\\\"needsHint\\\" hidden></p>\\n      <div id=\\\"queue\\\" class=\\\"queue\\\"></div>\\n      <div class=\\\"pager\\\" id=\\\"pager\\\" hidden>\\n        <button class=\\\"btn-secondary\\\" type=\\\"button\\\" id=\\\"prevPage\\\">Previous</button>\\n        <span id=\\\"pagerLabel\\\"></span>\\n        <button class=\\\"btn-secondary\\\" type=\\\"button\\\" id=\\\"nextPage\\\">Next</button>\\n      </div>\\n      <p class=\\\"side-note\\\">Click a post to review, edit, or reschedule. Refresh the browser tab to reload the queue.</p>\\n    </aside>\\n  </main>\\n  <script>\\n    const TZ = \\\"America/New_York\\\";\\n    const PAGE = \\\"https://n8n.example.com/webhook/linkedin-posts\\\";\\n    const sessionKey = \\\"linkedinWebSessionId\\\";\\n    const boot = window.__INITIAL__ || {};\\n    const PAGE_SIZE = 25;\\n    const state = {\\n      posts: Array.isArray(boot.posts) ? boot.posts : [],\\n      selectedId: boot.selectedId || null,\\n      sessionId: getSessionId(),\\n      page: 1\\n    };\\n\\n    function getSessionId() {\\n      let id = null;\\n      try { id = localStorage.getItem(sessionKey); } catch (e) {}\\n      if (!id) {\\n        id = (crypto.randomUUID && crypto.randomUUID()) || (\\\"web-\\\" + Date.now());\\n        try { localStorage.setItem(sessionKey, id); } catch (e) {}\\n      }\\n      return id;\\n    }\\n\\n    function $(id) { return document.getElementById(id); }\\n\\n    function showBanner(msg, ok) {\\n      const el = $(\\\"banner\\\");\\n      el.className = \\\"banner \\\" + (ok ? \\\"ok\\\" : \\\"error\\\");\\n      el.textContent = msg;\\n    }\\n\\n    document.querySelectorAll('input[name=\\\"session_id\\\"]').forEach((el) => { el.value = state.sessionId; });\\n\\n    if (boot.idea) $(\\\"idea\\\").value = boot.idea;\\n    if (boot.error) showBanner(boot.error, false);\\n    else if (boot.message) showBanner(boot.message, true);\\n\\n    function formatWhen(iso) {\\n      if (!iso) return \\\"\\\";\\n      const d = new Date(iso);\\n      if (Number.isNaN(d.getTime())) return String(iso);\\n      return new Intl.DateTimeFormat(\\\"en-US\\\", {\\n        timeZone: TZ, month: \\\"short\\\", day: \\\"numeric\\\", hour: \\\"numeric\\\", minute: \\\"2-digit\\\"\\n      }).format(d) + \\\" ET\\\";\\n    }\\n\\n    function toDatetimeLocal(iso) {\\n      if (!iso) return \\\"\\\";\\n      const d = new Date(iso);\\n      if (Number.isNaN(d.getTime())) return \\\"\\\";\\n      const parts = new Intl.DateTimeFormat(\\\"en-US\\\", {\\n        timeZone: TZ, year: \\\"numeric\\\", month: \\\"2-digit\\\", day: \\\"2-digit\\\",\\n        hour: \\\"2-digit\\\", minute: \\\"2-digit\\\", hourCycle: \\\"h23\\\"\\n      }).formatToParts(d);\\n      const g = (t) => (parts.find((p) => p.type === t) || {}).value;\\n      return `${g(\\\"year\\\")}-${g(\\\"month\\\")}-${g(\\\"day\\\")}T${g(\\\"hour\\\")}:${g(\\\"minute\\\")}`;\\n    }\\n\\n    function localInputToIso(value) {\\n      if (!value) throw new Error(\\\"Pick a date and time to schedule.\\\");\\n      const [datePart, timePart] = value.split(\\\"T\\\");\\n      const [y, m, d] = datePart.split(\\\"-\\\").map(Number);\\n      const [hh, mm] = timePart.split(\\\":\\\").map(Number);\\n      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;\\n      const pad = (n) => String(n).padStart(2, \\\"0\\\");\\n      if (tz === TZ) {\\n        const date = new Date(y, m - 1, d, hh, mm, 0);\\n        const offsetMin = -date.getTimezoneOffset();\\n        const sign = offsetMin >= 0 ? \\\"+\\\" : \\\"-\\\";\\n        const abs = Math.abs(offsetMin);\\n        const oh = String(Math.floor(abs / 60)).padStart(2, \\\"0\\\");\\n        const om = String(abs % 60).padStart(2, \\\"0\\\");\\n        return `${y}-${pad(m)}-${pad(d)}T${pad(hh)}:${pad(mm)}:00${sign}${oh}:${om}`;\\n      }\\n      const utcGuess = Date.UTC(y, m - 1, d, hh, mm, 0);\\n      const probe = new Date();\\n      const nyNow = new Date(probe.toLocaleString(\\\"en-US\\\", { timeZone: TZ }));\\n      const offsetMs = probe.getTime() - nyNow.getTime();\\n      const date = new Date(utcGuess + offsetMs);\\n      const offsetMin = -date.getTimezoneOffset();\\n      const sign = offsetMin >= 0 ? \\\"+\\\" : \\\"-\\\";\\n      const abs = Math.abs(offsetMin);\\n      const oh = String(Math.floor(abs / 60)).padStart(2, \\\"0\\\");\\n      const om = String(abs % 60).padStart(2, \\\"0\\\");\\n      const iso = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19);\\n      return iso + sign + oh + \\\":\\\" + om;\\n    }\\n\\n    function statusInfo(post) {\\n      const status = String(post.status || \\\"\\\").toLowerCase();\\n      const overdue = status === \\\"scheduled\\\" && post.scheduled_at && Date.parse(post.scheduled_at) < Date.now();\\n      if (status === \\\"pending_approval\\\") return { key: \\\"needs\\\", label: \\\"Needs review\\\", when: \\\"Waiting on you\\\", needs: true };\\n      if (status === \\\"failed\\\") return { key: \\\"failed\\\", label: \\\"Failed\\\", when: \\\"Needs retry\\\", needs: true };\\n      if (status === \\\"publishing\\\") return { key: \\\"publishing\\\", label: \\\"Publishing\\\", when: formatWhen(post.scheduled_at) || \\\"In progress\\\", needs: true };\\n      if (overdue) return { key: \\\"needs\\\", label: \\\"Overdue\\\", when: formatWhen(post.scheduled_at), needs: true };\\n      if (status === \\\"scheduled\\\") return { key: \\\"scheduled\\\", label: \\\"Scheduled\\\", when: formatWhen(post.scheduled_at), needs: false };\\n      if (status === \\\"published\\\") return { key: \\\"published\\\", label: \\\"Published\\\", when: formatWhen(post.published_at || post.scheduled_at), needs: false };\\n      return { key: \\\"needs\\\", label: status || \\\"Unknown\\\", when: \\\"\\\", needs: false };\\n    }\\n\\n    function previewOf(content) {\\n      return String(content || \\\"\\\").replace(/\\\\s+/g, \\\" \\\").trim() || \\\"(Empty draft)\\\";\\n    }\\n\\n    function selectPost(post) {\\n      if (!post) return;\\n      state.selectedId = post.id;\\n      const idx = filteredPosts().findIndex((p) => String(p.id) === String(post.id));\\n      if (idx >= 0) state.page = Math.floor(idx / PAGE_SIZE) + 1;\\n      $(\\\"draftEmpty\\\").hidden = true;\\n      $(\\\"editorForm\\\").hidden = false;\\n      $(\\\"draftMeta\\\").textContent = \\\"Draft #\\\" + post.id + \\\" \\u00b7 \\\" + String(post.status || \\\"\\\").replaceAll(\\\"_\\\", \\\" \\\");\\n      $(\\\"draftText\\\").value = post.content || \\\"\\\";\\n      $(\\\"editorDraftId\\\").value = post.id;\\n      $(\\\"editorStatus\\\").value = post.status || \\\"\\\";\\n      $(\\\"generateDraftId\\\").value = String(post.status || \\\"\\\").toLowerCase() === \\\"pending_approval\\\" ? post.id : 0;\\n      $(\\\"scheduleAt\\\").value = toDatetimeLocal(post.scheduled_at) || $(\\\"scheduleAt\\\").value;\\n      const published = String(post.status || \\\"\\\").toLowerCase() === \\\"published\\\";\\n      $(\\\"saveBtn\\\").disabled = published;\\n      $(\\\"scheduleBtn\\\").disabled = published;\\n      $(\\\"draftText\\\").readOnly = published;\\n      $(\\\"draftNotice\\\").textContent = published\\n        ? \\\"This post is already published, so it can\\u2019t be edited or rescheduled here.\\\"\\n        : (String(post.status || \\\"\\\").toLowerCase() === \\\"failed\\\"\\n          ? \\\"This post failed to publish. Save edits to move it back to review, then schedule it again.\\\"\\n          : \\\"\\\");\\n      renderQueue();\\n    }\\n\\n    function filteredPosts() {\\n      const hidePublished = $(\\\"hidePublished\\\").checked;\\n      const waitingOnMe = $(\\\"waitingOnMe\\\").checked;\\n      const onlyScheduled = $(\\\"onlyScheduled\\\").checked;\\n      return [...state.posts].filter((p) => {\\n        const status = String(p.status || \\\"\\\").toLowerCase();\\n        const info = statusInfo(p);\\n        if (hidePublished && status === \\\"published\\\") return false;\\n        if (waitingOnMe && !info.needs) return false;\\n        if (onlyScheduled && status !== \\\"scheduled\\\") return false;\\n        return true;\\n      }).sort((a, b) => {\\n        const an = statusInfo(a).needs ? 0 : 1;\\n        const bn = statusInfo(b).needs ? 0 : 1;\\n        if (an !== bn) return an - bn;\\n        return Number(b.id) - Number(a.id);\\n      });\\n    }\\n\\n    function renderQueue() {\\n      const posts = filteredPosts();\\n      const totalPages = Math.max(1, Math.ceil(posts.length / PAGE_SIZE));\\n      if (state.page > totalPages) state.page = totalPages;\\n      if (state.page < 1) state.page = 1;\\n      const pagePosts = posts.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE);\\n      const needs = posts.filter((p) => statusInfo(p).needs).length;\\n      const hint = $(\\\"needsHint\\\");\\n      if (needs) {\\n        hint.hidden = false;\\n        hint.textContent = \\\"Needs your action (\\\" + needs + \\\")\\\";\\n      } else {\\n        hint.hidden = true;\\n      }\\n      $(\\\"queue\\\").innerHTML = pagePosts.map((post) => {\\n        const info = statusInfo(post);\\n        const selected = String(post.id) === String(state.selectedId) ? \\\" selected\\\" : \\\"\\\";\\n        const title = previewOf(post.content).replace(/\\\"/g, \\\"&quot;\\\");\\n        return `<div class=\\\"card${selected}\\\" data-id=\\\"${post.id}\\\">\\n          <p class=\\\"preview\\\"></p>\\n          <div class=\\\"foot\\\">\\n            <span>Draft #${post.id}</span>\\n            <span class=\\\"pill ${info.key}\\\">${info.label}</span>\\n            <span class=\\\"when\\\">${info.when}</span>\\n            <form method=\\\"POST\\\" action=\\\"https://n8n.example.com/webhook/linkedin-posts\\\" class=\\\"delete-form\\\">\\n              <input type=\\\"hidden\\\" name=\\\"action\\\" value=\\\"delete\\\" />\\n              <input type=\\\"hidden\\\" name=\\\"draft_id\\\" value=\\\"${post.id}\\\" />\\n              <button class=\\\"btn-delete\\\" type=\\\"submit\\\" data-title=\\\"${title}\\\">Delete</button>\\n            </form>\\n          </div>\\n        </div>`;\\n      }).join(\\\"\\\") || `<p class=\\\"empty\\\">${posts.length ? \\\"No posts on this page.\\\" : \\\"No posts match these filters.\\\"}</p>`;\\n      const pager = $(\\\"pager\\\");\\n      pager.hidden = posts.length <= PAGE_SIZE;\\n      $(\\\"pagerLabel\\\").textContent = posts.length\\n        ? (\\\"Showing \\\" + ((state.page - 1) * PAGE_SIZE + (pagePosts.length ? 1 : 0)) + \\\"\\u2013\\\" + ((state.page - 1) * PAGE_SIZE + pagePosts.length) + \\\" of \\\" + posts.length)\\n        : \\\"\\\";\\n      $(\\\"prevPage\\\").disabled = state.page <= 1;\\n      $(\\\"nextPage\\\").disabled = state.page >= totalPages;\\n      [...$(\\\"queue\\\").querySelectorAll(\\\".card\\\")].forEach((el) => {\\n        const post = pagePosts.find((p) => String(p.id) === el.getAttribute(\\\"data-id\\\"));\\n        el.querySelector(\\\".preview\\\").textContent = previewOf(post && post.content);\\n        el.addEventListener(\\\"click\\\", (event) => {\\n          if (event.target.closest(\\\".delete-form\\\")) return;\\n          selectPost(post);\\n        });\\n      });\\n      [...$(\\\"queue\\\").querySelectorAll(\\\".delete-form\\\")].forEach((form) => {\\n        form.addEventListener(\\\"submit\\\", (event) => {\\n          const btn = form.querySelector(\\\".btn-delete\\\");\\n          const id = form.querySelector('input[name=\\\"draft_id\\\"]').value;\\n          const ok = confirm(\\\"Delete draft #\\\" + id + \\\"? This removes it from the queue and cannot be undone.\\\");\\n          if (!ok) event.preventDefault();\\n        });\\n        form.addEventListener(\\\"click\\\", (event) => event.stopPropagation());\\n      });\\n    }\\n\\n    $(\\\"editorForm\\\").addEventListener(\\\"submit\\\", (event) => {\\n      const action = event.submitter && event.submitter.getAttribute(\\\"data-action\\\") || \\\"save\\\";\\n      $(\\\"editorAction\\\").value = action;\\n      if (action === \\\"schedule\\\") {\\n        try {\\n          $(\\\"scheduledAtIso\\\").value = localInputToIso($(\\\"scheduleAt\\\").value);\\n        } catch (err) {\\n          event.preventDefault();\\n          showBanner(err.message);\\n        }\\n      }\\n    });\\n\\n    function resetAndRender() {\\n      state.page = 1;\\n      renderQueue();\\n    }\\n    $(\\\"hidePublished\\\").addEventListener(\\\"change\\\", resetAndRender);\\n    $(\\\"waitingOnMe\\\").addEventListener(\\\"change\\\", resetAndRender);\\n    $(\\\"onlyScheduled\\\").addEventListener(\\\"change\\\", resetAndRender);\\n    $(\\\"prevPage\\\").addEventListener(\\\"click\\\", () => { state.page -= 1; renderQueue(); });\\n    $(\\\"nextPage\\\").addEventListener(\\\"click\\\", () => { state.page += 1; renderQueue(); });\\n\\n    renderQueue();\\n    if (state.selectedId) {\\n      const current = state.posts.find((p) => String(p.id) === String(state.selectedId));\\n      if (current) selectPost(current);\\n    }\\n  </script>\\n</body>\\n</html>\\n\";\nconst flashNode = $('Keep Flash').first().json || {};\nconst rows = $input.all().map(i => i.json).filter(r => r && r.id != null);\nconst posts = rows.map(r => ({\n  id: r.id,\n  content: r.content || '',\n  status: r.status || '',\n  session_id: r.session_id || null,\n  scheduled_at: r.scheduled_at || null,\n  published_at: r.published_at || null,\n  approved_at: r.approved_at || null,\n}));\nconst initial = {\n  posts,\n  selectedId: flashNode._selectedId || null,\n  message: flashNode._message || '',\n  error: flashNode._error || '',\n  idea: flashNode.idea || '',\n};\nconst safe = JSON.stringify(initial).replace(/</g, '\\\\u003c');\nconst page = PAGE_HTML.replace('/*__INITIAL__*/', 'window.__INITIAL__=' + safe + ';');\nreturn [{ json: { html: page } }];\n"
+      },
+      "id": "445ee28f-6661-4635-9dc3-ddb3a9023fb4",
+      "name": "Render Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5152,
+        2480
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "db96ca51-9908-4ed5-9d8a-1eca2278d486",
+      "name": "Respond with Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        5376,
+        2480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst p = $input.first().json;\nconst draft_id = Number(p.draft_id);\nif (!Number.isFinite(draft_id) || draft_id <= 0) {\n  return [{ json: { _skip: true, _error: 'Select a post to delete.', _message: '', _selectedId: null } }];\n}\nreturn [{ json: { draft_id, _skip: false, _error: '', _message: '', _selectedId: null } }];\n"
+      },
+      "id": "446e9ad1-6cee-4f74-9c06-31681ba0e476",
+      "name": "Prep Delete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        3408
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "linkedin_posts"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.draft_id }}"
+            }
+          ]
+        },
+        "options": {
+          "dryRun": false
+        }
+      },
+      "id": "4226de47-7f30-4e07-8fa9-6bf578362dbf",
+      "name": "Delete Post Row",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3760,
+        3408
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst req = $('Prep Delete').first().json;\nif (req._skip) return [{ json: { _message: '', _error: req._error || '', _selectedId: null } }];\nreturn [{ json: { _message: 'Deleted draft #' + req.draft_id + '.', _error: '', _selectedId: null } }];\n"
+      },
+      "id": "9f029fd6-5793-4008-8ed7-c4816957b271",
+      "name": "After Delete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4000,
+        3408
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Page Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Request": {
+      "main": [
+        [
+          {
+            "node": "Route Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Action": {
+      "main": [
+        [
+          {
+            "node": "Prep Generate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep Save",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep Delete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pass For Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Generate": {
+      "main": [
+        [
+          {
+            "node": "Write LinkedIn Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini 3.5 Flash Lite": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write LinkedIn Draft",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write LinkedIn Draft": {
+      "main": [
+        [
+          {
+            "node": "Prep Save Generated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Save Generated": {
+      "main": [
+        [
+          {
+            "node": "Save Generated Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Generated Draft": {
+      "main": [
+        [
+          {
+            "node": "After Generate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After Generate": {
+      "main": [
+        [
+          {
+            "node": "Keep Flash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Save": {
+      "main": [
+        [
+          {
+            "node": "Is Failed Reopen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Failed Reopen": {
+      "main": [
+        [
+          {
+            "node": "Reopen Failed Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Draft Edits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reopen Failed Draft": {
+      "main": [
+        [
+          {
+            "node": "After Save",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Draft Edits": {
+      "main": [
+        [
+          {
+            "node": "After Save",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After Save": {
+      "main": [
+        [
+          {
+            "node": "Keep Flash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Schedule": {
+      "main": [
+        [
+          {
+            "node": "Schedule via 02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule via 02": {
+      "main": [
+        [
+          {
+            "node": "After Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After Schedule": {
+      "main": [
+        [
+          {
+            "node": "Keep Flash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pass For Render": {
+      "main": [
+        [
+          {
+            "node": "Keep Flash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Flash": {
+      "main": [
+        [
+          {
+            "node": "Get all posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get all posts": {
+      "main": [
+        [
+          {
+            "node": "Render Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Page": {
+      "main": [
+        [
+          {
+            "node": "Respond with Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Delete": {
+      "main": [
+        [
+          {
+            "node": "Delete Post Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Post Row": {
+      "main": [
+        [
+          {
+            "node": "After Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After Delete": {
+      "main": [
+        [
+          {
+            "node": "Keep Flash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5e5dec4a-0e92-4769-bd4e-0fdc426c570a",
+  "meta": {
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "IbNAwNphCRxEbBHO",
+  "tags": [
+    {
+      "updatedAt": "2026-11-05T18:24:10.242Z",
+      "createdAt": "2026-11-05T18:24:10.242Z",
+      "id": "0RGF3j4gWDPSxc9L",
+      "name": "LinkedIn"
+    }
+  ]
+}
